@@ -1,0 +1,3 @@
+[submodule "src/blazing"]
+	path = src/blazing
+	url = https://github.com/MattEstHaut/Blazing
