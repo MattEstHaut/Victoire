@@ -466,3 +466,10 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
 
     return nodes;
 }
+
+pub const MoveList = std.ArrayList(chess.Move);
+
+/// Adds the Move to the list. Intended to be used with generate().
+pub inline fn append(list: *MoveList, move: chess.Move) void {
+    list.append(move);
+}
