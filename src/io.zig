@@ -87,12 +87,12 @@ pub const parsing = struct {
 
     /// Parses a Move from a UCI (Universal Chess Interface) notation.
     pub fn move(move_str: []const u8) !chess.PartialMove {
-        if (move_str.len < 4) return error.invalid_move;
-        if (move_str.len > 5) return error.invalid_move;
-        if (move_str[0] < 'a' or move_str[0] > 'h') return error.invalid_move;
-        if (move_str[1] < '1' or move_str[1] > '8') return error.invalid_move;
-        if (move_str[2] < 'a' or move_str[2] > 'h') return error.invalid_move;
-        if (move_str[3] < '1' or move_str[3] > '8') return error.invalid_move;
+        if (move_str.len < 4) return error.move_too_short;
+        if (move_str.len > 5) return error.move_too_long;
+        if (move_str[0] < 'a' or move_str[0] > 'h') return error.invalid_first_column;
+        if (move_str[1] < '1' or move_str[1] > '8') return error.invalid_first_row;
+        if (move_str[2] < 'a' or move_str[2] > 'h') return error.invalid_second_column;
+        if (move_str[3] < '1' or move_str[3] > '8') return error.invalid_second_row;
 
         var partial = chess.PartialMove{
             .src = @as(u64, 1) << @intCast(move_str[0] - 'a' + 8 * ('8' - move_str[1])),
@@ -105,7 +105,7 @@ pub const parsing = struct {
                 'r' => .rook,
                 'b' => .bishop,
                 'n' => .knight,
-                else => return error.invalid_move,
+                else => return error.invalid_promotion,
             };
         }
 
