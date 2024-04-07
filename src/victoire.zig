@@ -99,7 +99,7 @@ pub const Engine = struct {
         self.data.aborted = false;
         self.data.deadline = time;
 
-        if (time != null) self.data.deadline += std.time.milliTimestamp();
+        if (time != null) self.data.deadline.? += std.time.milliTimestamp();
 
         return self.PVS(SearchNode.root(board, depth));
     }
