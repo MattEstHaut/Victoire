@@ -481,5 +481,6 @@ const EndType = enum {
 
 /// Gives the end type. Does not check if the game is over.
 pub inline fn end(board: *chess.Board) EndType {
-    return isAttacked(board, board.allies().king);
+    if (isAttacked(board.*, board.allies().king)) return .checkmate;
+    return .stalemate;
 }
