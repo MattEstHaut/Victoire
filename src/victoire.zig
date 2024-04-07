@@ -172,6 +172,7 @@ pub const Engine = struct {
         var pv: ?chess.Move = null;
         var record_depth: u32 = 0;
 
+        // Checks transposition table.
         if (node.depth > 1) transpo: {
             const record = self.data.table.get(node.hash) orelse break :transpo;
             record_depth = record.data.search_result.depth;
@@ -186,13 +187,16 @@ pub const Engine = struct {
             pv = record.data.search_result.best_move;
         }
 
+        // Generates moves.
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
+        // Detects checkmate and stalemate.
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
             .checkmate => SearchResult.raw(-@as(i64, evaluation.checkmate) + node.ply),
             .stalemate => SearchResult.raw(evaluation.stalemate),
         };
 
+        // Updates move scores for ordering.
         for (move_list_len..self.data.move_list.items.len) |i| {
             var move_data = &self.data.move_list.items[i];
 
@@ -209,8 +213,10 @@ pub const Engine = struct {
             } else move_data.score = evaluation.move_evaluation.score(move_data.move) - 200;
         }
 
+        // Orders moves.
         std.sort.heap(MoveData, self.data.move_list.items[move_list_len..], {}, MoveData.lessThan);
 
+        // PVS algorithm.
         for (0..move_count) |i| {
             const move_data = self.data.move_list.pop();
 
@@ -236,6 +242,7 @@ pub const Engine = struct {
 
         search_result.score = mutable_node.alpha;
 
+        // Saves search result in transposition table.
         if (node.depth >= record_depth) {
             var record = TranspositionData.init(search_result);
             if (search_result.score <= node.alpha) record.flag = .upper;
