@@ -43,6 +43,12 @@ const SearchNode = struct {
         result.alpha = self.beta - 1;
         return result;
     }
+
+    pub inline fn append(self: SearchNode, depth: u32) SearchNode {
+        var result = self;
+        result.depth += depth;
+        return result;
+    }
 };
 
 const SearchResult = struct {
@@ -77,7 +83,9 @@ const MoveData = struct {
 
 /// The Victory Chess Engine.
 pub const Engine = struct {
-    options: struct {} = .{},
+    options: struct {
+        quiesce_depth: u32 = 6,
+    } = .{},
 
     data: struct {
         move_list: MoveDataList = undefined,
@@ -131,7 +139,7 @@ pub const Engine = struct {
 
     fn PVS(self: *Engine, node: SearchNode) SearchResult {
         if (self.shouldAbort()) return SearchResult.raw(0);
-        if (node.depth == 0) return SearchResult.raw(evaluation.board_evaluation.material(node.board));
+        if (node.depth == 0) return SearchResult.raw(self.quiesce(node.append(self.options.quiesce_depth)));
 
         const move_list_len = self.data.move_list.items.len;
         var search_result = SearchResult{ .depth = node.depth };
@@ -163,5 +171,35 @@ pub const Engine = struct {
 
         search_result.score = mutable_node.alpha;
         return search_result;
+    }
+
+    fn quiesce(self: *Engine, node: SearchNode) i64 {
+        if (self.shouldAbort()) return 0;
+
+        const pat = evaluation.board_evaluation.material(node.board);
+        if (node.depth == 0) return pat;
+
+        if (pat >= node.beta) return node.beta;
+
+        var mutable_node = node;
+        mutable_node.alpha = @max(node.alpha, pat);
+        const move_list_len = self.data.move_list.items.len;
+
+        const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
+        for (0..move_count) |_| {
+            const move_data = self.data.move_list.pop();
+            if (move_data.move.capture == null) continue;
+
+            const score = -self.quiesce(mutable_node.next(move_data.move));
+
+            if (score >= mutable_node.beta) {
+                self.data.move_list.resize(move_list_len) catch unreachable;
+                return mutable_node.beta;
+            }
+
+            mutable_node.alpha = @max(mutable_node.alpha, score);
+        }
+
+        return mutable_node.alpha;
     }
 };
