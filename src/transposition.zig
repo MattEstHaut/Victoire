@@ -61,6 +61,7 @@ pub const ZobristHasher = struct {
     black_to_move: u64 = undefined,
 
     pub fn init() ZobristHasher {
+        @setEvalBranchQuota(12 * 64 * 16);
         var hasher = ZobristHasher{};
         var rng = std.rand.DefaultPrng.init(0);
         for (0..12 * 64) |i| hasher.numbers[i] = rng.next();
@@ -92,6 +93,7 @@ pub const ZobristHasher = struct {
 
     pub inline fn update(self: ZobristHasher, hash: u64, move: chess.Move) u64 {
         var diff = self.black_to_move;
+        if (move.null_move) return hash ^ diff;
 
         if (move.castling != null) {
             switch (move.castling.?) {
