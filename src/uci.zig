@@ -6,11 +6,13 @@ const chess = @import("chess.zig");
 const victoire = @import("victoire.zig");
 const perft = @import("perft.zig");
 
+const EngineOptions = struct {
+    depth: u32 = 10,
+    time: ?i64 = null,
+};
+
 pub const Engine = struct {
-    options: struct {
-        depth: u32 = undefined,
-        time: ?i64 = undefined,
-    } = .{},
+    options: EngineOptions = .{},
 
     data: struct {
         board: chess.Board = .{},
@@ -53,12 +55,11 @@ pub const Engine = struct {
                     if (std.mem.eql(u8, arg, "startpos")) {
                         self.data.board = try io.parsing.board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     } else if (std.mem.eql(u8, arg, "fen")) {
-                        arg = args.next() orelse continue;
+                        arg = args.rest();
                         self.data.board = try io.parsing.board(arg);
                     } else continue;
 
-                    arg = args.next() orelse continue;
-                    if (!std.mem.eql(u8, arg, "moves")) continue;
+                    while (args.next()) |a| if (std.mem.eql(u8, a, "moves")) break;
 
                     while (args.next()) |arg_move| {
                         const partial_move = try io.parsing.move(arg_move);
@@ -75,6 +76,8 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "go")) {
+                    self.options = EngineOptions{};
+
                     arg = args.peek() orelse {
                         self.search();
                         continue;
@@ -87,9 +90,6 @@ pub const Engine = struct {
                         _ = try perft.perft(self.data.board, depth);
                         continue;
                     }
-
-                    self.options.depth = 10;
-                    self.options.time = null;
 
                     while (args.next()) |a| {
                         if (std.mem.eql(u8, a, "depth")) {
@@ -110,6 +110,7 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "quit")) {
+                    self.stop();
                     self.data.engine.deinit();
                     break;
                 }
