@@ -69,6 +69,11 @@ pub const Engine = struct {
                     continue;
                 }
 
+                if (std.mem.eql(u8, arg, "stop")) {
+                    self.stop();
+                    continue;
+                }
+
                 if (std.mem.eql(u8, arg, "go")) {
                     arg = args.peek() orelse {
                         self.search();
@@ -98,7 +103,8 @@ pub const Engine = struct {
                         }
                     }
 
-                    self.search();
+                    self.stop();
+                    self.data.search_thread = try std.Thread.spawn(.{}, search, .{self});
 
                     continue;
                 }
@@ -109,6 +115,12 @@ pub const Engine = struct {
                 }
             }
         }
+    }
+
+    fn stop(self: *Engine) void {
+        self.data.engine.stop();
+        if (self.data.search_thread != null) self.data.search_thread.?.join();
+        self.data.search_thread = null;
     }
 
     fn search(self: *Engine) void {
