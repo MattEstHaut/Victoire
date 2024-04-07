@@ -39,6 +39,18 @@ const SearchNode = struct {
     }
 };
 
+const MoveDataList = std.ArrayList(MoveData);
+
+const MoveData = struct {
+    move: chess.Move = chess.Move.nullMove(),
+};
+
+inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
+    list.appendAssumeCapacity(.{
+        .move = move,
+    });
+}
+
 /// The Victory Chess Engine.
 pub const Engine = struct {
     options: struct {} = .{},
