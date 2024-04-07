@@ -67,8 +67,8 @@ pub const Engine = struct {
 
                     if (std.mem.eql(u8, arg, "perft")) {
                         arg = args.next() orelse "1";
-                        const depth = std.fmt.parseInt(u32, arg, 10);
-                        perft.perft(self.data.board, depth);
+                        const depth = try std.fmt.parseInt(u32, arg, 10);
+                        _ = try perft.perft(self.data.board, depth);
                     }
 
                     continue;
