@@ -111,6 +111,7 @@ pub const Engine = struct {
     options: struct {
         quiesce_depth: u32 = 6,
         table_size: u64 = 1_000_000,
+        late_move_reduction: bool = true,
     } = .{},
 
     data: struct {
@@ -229,9 +230,20 @@ pub const Engine = struct {
             const child_result = blk: {
                 const child = mutable_node.next(move_data.move);
                 if (i == 0) break :blk self.PVS(child).inv();
-                const result = self.PVS(child.nullWindow()).inv();
+
+                // Late move reduction.
+                const reduction: u32 = reduc: {
+                    if (!self.options.late_move_reduction) break :reduc 0;
+                    if (node.depth < 6) break :reduc 0;
+                    if (i < 5) break :reduc 0;
+                    if (move_data.move.capture != null) break :reduc 0;
+                    if (i < 10) break :reduc 1;
+                    break :reduc 2;
+                };
+
+                const result = self.PVS(child.reduce(reduction).nullWindow()).inv();
                 if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child).inv();
+                    break :blk self.PVS(child.reduce(reduction)).inv();
                 break :blk result;
             };
 
