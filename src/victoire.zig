@@ -181,7 +181,7 @@ pub const Engine = struct {
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => SearchResult.raw(-evaluation.checkmate + node.ply),
+            .checkmate => SearchResult.raw(-@as(i64, evaluation.checkmate) + node.ply),
             .stalemate => SearchResult.raw(evaluation.stalemate),
         };
 
@@ -235,7 +235,7 @@ pub const Engine = struct {
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => -evaluation.checkmate + node.ply,
+            .checkmate => -@as(i64, evaluation.checkmate) + node.ply,
             .stalemate => evaluation.stalemate,
         };
 
