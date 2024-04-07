@@ -222,7 +222,7 @@ pub const Engine = struct {
 
             const hash = hasher.update(node.hash, move_data.move);
             const record = self.data.table.get(hash);
-            if (record != null) {
+            if (record != null and record.?.data.flag == .exact) {
                 const sr = record.?.data.search_result;
                 move_data.score = sr.score + sr.depth * 10;
             } else move_data.score = evaluation.move_evaluation.score(move_data.move) - 200;
