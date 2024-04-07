@@ -73,11 +73,19 @@ const MoveDataList = std.ArrayList(MoveData);
 
 const MoveData = struct {
     move: chess.Move = chess.Move.nullMove(),
+    score: i64 = -evaluation.checkmate,
+    is_pv: bool = false,
 
     pub inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
         list.append(.{
             .move = move,
         }) catch unreachable;
+    }
+
+    pub fn lessThan(_: void, self: MoveData, other: MoveData) bool {
+        if (other.is_pv) return true;
+        if (self.is_pv) return false;
+        return self.score < other.score;
     }
 };
 
@@ -184,6 +192,24 @@ pub const Engine = struct {
             .checkmate => SearchResult.raw(-@as(i64, evaluation.checkmate) + node.ply),
             .stalemate => SearchResult.raw(evaluation.stalemate),
         };
+
+        for (move_list_len..self.data.move_list.items.len) |i| {
+            var move_data = &self.data.move_list.items[i];
+
+            if (pv != null and pv.?.sameAs(move_data.move)) {
+                move_data.is_pv = true;
+                continue;
+            }
+
+            const hash = hasher.update(node.hash, move_data.move);
+            const record = self.data.table.get(hash);
+            if (record != null) {
+                const sr = record.?.data.search_result;
+                move_data.score = sr.score + sr.depth * 10;
+            } else move_data.score = evaluation.move_evaluation.score(move_data.move) - 200;
+        }
+
+        std.sort.heap(MoveData, self.data.move_list.items[move_list_len..], {}, MoveData.lessThan);
 
         for (0..move_count) |i| {
             const move_data = self.data.move_list.pop();
