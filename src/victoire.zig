@@ -45,6 +45,24 @@ const SearchNode = struct {
     }
 };
 
+const SearchResult = struct {
+    best_move: chess.Move = chess.Move.nullMove(),
+    score: i64 = -evaluation.checkmate,
+    depth: u32 = 0,
+
+    pub inline fn raw(score: i64) SearchResult {
+        return .{ .score = score };
+    }
+
+    pub inline fn inv(self: SearchResult) SearchResult {
+        return .{
+            .best_move = self.best_move,
+            .score = -self.score,
+            .depth = self.depth,
+        };
+    }
+};
+
 const MoveDataList = std.ArrayList(MoveData);
 
 const MoveData = struct {
@@ -73,31 +91,38 @@ pub const Engine = struct {
         self.data.move_list.deinit();
     }
 
-    fn PVS(self: *Engine, node: SearchNode) i64 {
-        if (node.depth == 0) return evaluation.board_evaluation.material(node.board);
+    fn PVS(self: *Engine, node: SearchNode) SearchResult {
+        if (node.depth == 0) return SearchResult.raw(evaluation.board_evaluation.material(node.board));
+
         const move_list_len = self.data.move_list.items.len;
+        var search_result = SearchResult{ .depth = node.depth };
         var mutable_node = node;
 
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
         for (0..move_count) |i| {
             const move_data = self.data.move_list.pop();
 
-            const score: i64 = blk: {
+            const child_result = blk: {
                 const child = mutable_node.next(move_data.move);
-                if (i == 0) break :blk -self.PVS(child);
-                const score = -self.PVS(child.nullWindow());
-                if (mutable_node.alpha < score and score < mutable_node.beta)
-                    break :blk -self.PVS(child);
-                break :blk score;
+                if (i == 0) break :blk self.PVS(child).inv();
+                const result = self.PVS(child.nullWindow()).inv();
+                if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
+                    break :blk self.PVS(child).inv();
+                break :blk result;
             };
 
-            mutable_node.alpha = @max(mutable_node.alpha, score);
+            if (child_result.score > mutable_node.alpha) {
+                mutable_node.alpha = child_result.score;
+                search_result.best_move = move_data.move;
+            }
+
             if (mutable_node.alpha >= mutable_node.beta) {
                 self.data.move_list.resize(move_list_len) catch unreachable;
                 break;
             }
         }
 
-        return mutable_node.alpha;
+        search_result.score = mutable_node.alpha;
+        return search_result;
     }
 };
