@@ -229,16 +229,18 @@ pub const Board = struct {
 
     /// Determines a Move from the Board and the PartialMove
     pub inline fn completeMove(self: Board, partial: PartialMove) !Move {
+        var board = self;
+
         var move = Move{
             .src = partial.src,
             .dest = partial.dest,
-            .side = self.side,
+            .side = board.side,
             .promotion = partial.promotion,
-            .piece = self.allies().collision(partial.src) orelse return error.no_source_piece,
-            .capture = self.enemies().collision(partial.dest),
+            .piece = board.allies().collision(partial.src) orelse return error.no_source_piece,
+            .capture = board.enemies().collision(partial.dest),
         };
 
-        if (move.dest == self.en_passant and move.piece == .pawn) move.en_passant = true;
+        if (move.dest == board.en_passant and move.piece == .pawn) move.en_passant = true;
 
         if (move.piece == .king) {
             if (move.src == squares.e1 and move.dest == squares.g1) move.castling = .K;
