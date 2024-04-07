@@ -152,7 +152,7 @@ const PinCheck = struct {
 };
 
 /// Checks if square is attacked. @popcCount(bb) == 1.
-pub inline fn isAttacked(board: chess.Board, bb: u64) bool {
+inline fn isAttacked(board: chess.Board, bb: u64) bool {
     var mutable_board = board;
     const atks = mutable_board.enemies().*;
     const blockers = (board.white.occupied | board.black.occupied) & ~mutable_board.allies().king;
