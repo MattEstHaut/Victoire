@@ -152,7 +152,7 @@ const PinCheck = struct {
 };
 
 /// Checks if square is attacked. @popcCount(bb) == 1.
-pub inline fn isAttacked(board: chess.Board, bb: u64) bool {
+inline fn isAttacked(board: chess.Board, bb: u64) bool {
     var mutable_board = board;
     const atks = mutable_board.enemies().*;
     const blockers = (board.white.occupied | board.black.occupied) & ~mutable_board.allies().king;
@@ -472,4 +472,15 @@ pub const MoveList = std.ArrayList(chess.Move);
 /// Adds the Move to the list. Intended to be used with generate().
 pub inline fn append(list: *MoveList, move: chess.Move) void {
     list.append(move);
+}
+
+const EndType = enum {
+    checkmate,
+    stalemate,
+};
+
+/// Gives the end type. Does not check if the game is over.
+pub inline fn end(board: *chess.Board) EndType {
+    if (isAttacked(board.*, board.allies().king)) return .checkmate;
+    return .stalemate;
 }
