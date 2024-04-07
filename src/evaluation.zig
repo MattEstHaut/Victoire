@@ -2,6 +2,9 @@
 
 const chess = @import("chess.zig");
 
+pub const checkmate = 1_000_000;
+pub const stalemate = 0;
+
 /// Contains evaluation functions for Board.
 pub const board_evaluation = struct {
     pub inline fn material(board: chess.Board) i64 {
