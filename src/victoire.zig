@@ -72,4 +72,32 @@ pub const Engine = struct {
     pub fn deinit(self: *Engine) void {
         self.data.move_list.deinit();
     }
+
+    fn PVS(self: *Engine, node: SearchNode) i64 {
+        if (node.depth == 0) return evaluation.board_evaluation.material(node.board);
+        const move_list_len = self.data.move_list.items.len;
+        var mutable_node = node;
+
+        const move_count = movegen.generate(node.board, &self.data.move_list, appendMove);
+        for (0..move_count) |i| {
+            const move_data = self.data.move_list.pop();
+
+            const score: i64 = blk: {
+                const child = mutable_node.next(move_data.move);
+                if (i == 0) break :blk -self.PVS(child);
+                const score = -self.PVS(child.nullWindow());
+                if (mutable_node.alpha < score and score < mutable_node.beta)
+                    break :blk -self.PVS(child);
+                break :blk score;
+            };
+
+            mutable_node.alpha = @max(mutable_node.alpha, score);
+            if (mutable_node.alpha >= mutable_node.beta) {
+                self.data.move_list.resize(move_list_len) catch unreachable;
+                break;
+            }
+        }
+
+        return mutable_node.alpha;
+    }
 };
