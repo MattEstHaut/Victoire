@@ -130,6 +130,14 @@ pub const Engine = struct {
         return engine;
     }
 
+    pub fn initWithSize(size: u64) Engine {
+        var engine = Engine{};
+        engine.options.table_size = size;
+        engine.data.move_list = MoveDataList.init(std.heap.page_allocator);
+        engine.data.table = Table.init(engine.options.table_size, TranspositionData{}) catch unreachable;
+        return engine;
+    }
+
     pub fn deinit(self: *Engine) void {
         self.data.move_list.deinit();
         self.data.table.deinit();
