@@ -49,13 +49,13 @@ const MoveDataList = std.ArrayList(MoveData);
 
 const MoveData = struct {
     move: chess.Move = chess.Move.nullMove(),
-};
 
-inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
-    list.append(.{
-        .move = move,
-    }) catch unreachable;
-}
+    pub inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
+        list.append(.{
+            .move = move,
+        }) catch unreachable;
+    }
+};
 
 /// The Victory Chess Engine.
 pub const Engine = struct {
@@ -78,7 +78,7 @@ pub const Engine = struct {
         const move_list_len = self.data.move_list.items.len;
         var mutable_node = node;
 
-        const move_count = movegen.generate(node.board, &self.data.move_list, appendMove);
+        const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
         for (0..move_count) |i| {
             const move_data = self.data.move_list.pop();
 
