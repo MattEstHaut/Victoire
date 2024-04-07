@@ -104,7 +104,7 @@ pub const Engine = struct {
         var result = SearchResult.raw(0);
 
         for (0..depth) |ply| {
-            const ply_result = self.PVS(SearchNode.root(board, ply));
+            const ply_result = self.PVS(SearchNode.root(board, @intCast(ply)));
             if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) break;
             result = ply_result;
         }
