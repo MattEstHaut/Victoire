@@ -32,10 +32,16 @@ const SearchNode = struct {
             .board = self.board.copyAndMake(move),
             .depth = self.depth - 1,
             .ply = self.ply + 1,
-            .alpha = self.alpha,
-            .beta = self.beta,
+            .alpha = -self.beta,
+            .beta = -self.alpha,
             .hash = hasher.update(self.hash, move),
         };
+    }
+
+    pub inline fn nullWindow(self: SearchNode) SearchNode {
+        var result = self;
+        result.alpha = self.beta - 1;
+        return result;
     }
 };
 
@@ -46,9 +52,9 @@ const MoveData = struct {
 };
 
 inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
-    list.appendAssumeCapacity(.{
+    list.append(.{
         .move = move,
-    });
+    }) catch unreachable;
 }
 
 /// The Victory Chess Engine.
