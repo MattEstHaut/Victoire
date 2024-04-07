@@ -4,7 +4,7 @@ const chess = @import("chess.zig");
 const squares = @import("squares.zig");
 const std = @import("std");
 
-pub fn TranspositionRecord(comptime T: type) type {
+fn TranspositionRecord(comptime T: type) type {
     return struct {
         hash: u64 = 0,
         data: T = undefined,
