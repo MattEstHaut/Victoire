@@ -78,9 +78,13 @@ const MoveData = struct {
 /// The Victory Chess Engine.
 pub const Engine = struct {
     options: struct {} = .{},
+
     data: struct {
         move_list: MoveDataList = undefined,
+        deadline: ?i64 = null,
+        aborted: bool = false,
     } = .{},
+
     infos: struct {} = .{},
 
     pub fn init() Engine {
@@ -91,11 +95,34 @@ pub const Engine = struct {
         self.data.move_list.deinit();
     }
 
-    pub fn search(self: *Engine, board: chess.Board, depth: u32) SearchResult {
+    pub fn search(self: *Engine, board: chess.Board, depth: u32, time: ?i64) SearchResult {
+        self.data.aborted = false;
+        self.data.deadline = time;
+
+        if (time != null) self.data.deadline.? += std.time.milliTimestamp();
+
         return self.PVS(SearchNode.root(board, depth));
     }
 
+    fn shouldAbort(self: *Engine) bool {
+        if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) return true;
+
+        if (self.data.deadline != null) {
+            if (self.data.deadline.? <= std.time.milliTimestamp()) {
+                @atomicStore(bool, &self.data.aborted, true, .seq_cst);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    pub fn stop(self: *Engine) void {
+        @atomicStore(bool, &self.data.aborted, true, .seq_cst);
+    }
+
     fn PVS(self: *Engine, node: SearchNode) SearchResult {
+        if (self.shouldAbort()) return SearchResult.raw(0);
         if (node.depth == 0) return SearchResult.raw(evaluation.board_evaluation.material(node.board));
 
         const move_list_len = self.data.move_list.items.len;
