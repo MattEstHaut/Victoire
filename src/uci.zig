@@ -13,6 +13,8 @@ pub const Engine = struct {
 
     data: struct {
         board: chess.Board = .{},
+        engine: victoire.Engine = undefined,
+        search_thread: ?std.Thread = null,
     } = .{},
 
     pub fn run(self: *Engine) !void {
@@ -31,8 +33,12 @@ pub const Engine = struct {
                 if (std.mem.eql(u8, arg, "uci")) {
                     try stdout.print("id name Victoire\n", .{});
                     try stdout.print("id author Delucchi Matteo\n", .{});
-                    try stdout.print("option name depth type spin default {d} min 1 max 30\n", .{self.options.depth});
                     try stdout.print("uciok\n", .{});
+                    continue;
+                }
+
+                if (std.mem.eql(u8, arg, "ucinewgame")) {
+                    self.data.engine = victoire.Engine.init();
                     continue;
                 }
 
@@ -63,21 +69,50 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "go")) {
-                    arg = args.next() orelse continue;
+                    arg = args.peek() orelse {
+                        self.search();
+                        continue;
+                    };
 
                     if (std.mem.eql(u8, arg, "perft")) {
+                        _ = args.next();
                         arg = args.next() orelse "1";
                         const depth = try std.fmt.parseInt(u32, arg, 10);
                         _ = try perft.perft(self.data.board, depth);
                     }
 
+                    while (args.next()) |a| {
+                        if (std.mem.eql(u8, a, "depth")) {
+                            arg = args.next() orelse break;
+                            self.options.depth = try std.fmt.parseInt(u32, arg, 10);
+                        }
+                    }
+
+                    self.search();
+
                     continue;
                 }
 
                 if (std.mem.eql(u8, arg, "quit")) {
+                    self.data.engine.deinit();
                     break;
                 }
             }
         }
+    }
+
+    fn search(self: *Engine) void {
+        const stdout = std.io.getStdOut().writer();
+        const t0 = std.time.milliTimestamp();
+        const result = self.data.engine.search(self.data.board, self.options.depth);
+        const dt = std.time.milliTimestamp() - t0;
+
+        stdout.print("info score cp {d} depth {d} time {d}\n", .{
+            result.score,
+            result.depth,
+            dt,
+        }) catch unreachable;
+
+        stdout.print("bestmove {s}\n", .{io.stringify(result.best_move)}) catch unreachable;
     }
 };
