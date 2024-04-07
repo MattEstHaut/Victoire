@@ -146,6 +146,12 @@ pub const Engine = struct {
         var mutable_node = node;
 
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
+
+        if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
+            .checkmate => SearchResult.raw(-evaluation.checkmate),
+            .stalemate => SearchResult.raw(evaluation.stalemate),
+        };
+
         for (0..move_count) |i| {
             const move_data = self.data.move_list.pop();
 
@@ -186,6 +192,12 @@ pub const Engine = struct {
         const move_list_len = self.data.move_list.items.len;
 
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
+
+        if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
+            .checkmate => -evaluation.checkmate,
+            .stalemate => evaluation.stalemate,
+        };
+
         for (0..move_count) |_| {
             const move_data = self.data.move_list.pop();
             if (move_data.move.capture == null) continue;
