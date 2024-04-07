@@ -81,26 +81,43 @@ const MoveData = struct {
     }
 };
 
+const Table = transposition.TranspositionTable(TranspositionData);
+
+const TranspositionData = struct {
+    search_result: SearchResult = SearchResult.raw(0),
+    flag: enum { exact, lower, upper } = .exact,
+
+    pub inline fn init(search_result: SearchResult) TranspositionData {
+        return .{ .search_result = search_result };
+    }
+};
+
 /// The Victory Chess Engine.
 pub const Engine = struct {
     options: struct {
         quiesce_depth: u32 = 6,
+        table_size: u64 = 1_000_000,
     } = .{},
 
     data: struct {
         move_list: MoveDataList = undefined,
         deadline: ?i64 = null,
         aborted: bool = false,
+        table: Table = undefined,
     } = .{},
 
     infos: struct {} = .{},
 
     pub fn init() Engine {
-        return .{ .data = .{ .move_list = MoveDataList.init(std.heap.page_allocator) } };
+        var engine = Engine{};
+        engine.data.move_list = MoveDataList.init(std.heap.page_allocator);
+        engine.data.table = Table.init(engine.options.table_size, TranspositionData{}) catch unreachable;
+        return engine;
     }
 
     pub fn deinit(self: *Engine) void {
         self.data.move_list.deinit();
+        self.data.table.deinit();
     }
 
     pub fn search(self: *Engine, board: chess.Board, depth: u32, time: ?i64) SearchResult {
@@ -144,6 +161,22 @@ pub const Engine = struct {
         const move_list_len = self.data.move_list.items.len;
         var search_result = SearchResult{ .depth = node.depth };
         var mutable_node = node;
+        var pv: ?chess.Move = null;
+        var record_depth: u32 = 0;
+
+        if (node.depth > 1) transpo: {
+            const record = self.data.table.get(node.hash) orelse break :transpo;
+            record_depth = record.data.search_result.depth;
+            if (record_depth >= node.depth) {
+                switch (record.data.flag) {
+                    .exact => return record.data.search_result,
+                    .lower => mutable_node.alpha = @max(node.alpha, record.data.search_result.score),
+                    .upper => mutable_node.beta = @min(node.beta, record.data.search_result.score),
+                }
+                if (mutable_node.alpha >= mutable_node.beta) return record.data.search_result;
+            }
+            pv = record.data.search_result.best_move;
+        }
 
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
@@ -176,6 +209,14 @@ pub const Engine = struct {
         }
 
         search_result.score = mutable_node.alpha;
+
+        if (node.depth >= record_depth) {
+            var record = TranspositionData.init(search_result);
+            if (search_result.score <= node.alpha) record.flag = .upper;
+            if (search_result.score >= mutable_node.beta) record.flag = .lower;
+            self.data.table.set(node.hash, record);
+        }
+
         return search_result;
     }
 
