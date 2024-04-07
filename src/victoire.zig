@@ -54,6 +54,16 @@ inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
 /// The Victory Chess Engine.
 pub const Engine = struct {
     options: struct {} = .{},
-    data: struct {} = .{},
+    data: struct {
+        move_list: MoveDataList = undefined,
+    } = .{},
     infos: struct {} = .{},
+
+    pub fn init() Engine {
+        return .{ .data = .{ .move_list = MoveDataList.init(std.heap.page_allocator) } };
+    }
+
+    pub fn deinit(self: *Engine) void {
+        self.data.move_list.deinit();
+    }
 };
