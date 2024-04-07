@@ -91,6 +91,10 @@ pub const Engine = struct {
         self.data.move_list.deinit();
     }
 
+    pub fn search(self: *Engine, board: chess.Board, depth: u32) SearchResult {
+        return self.PVS(SearchNode.root(board, depth));
+    }
+
     fn PVS(self: *Engine, node: SearchNode) SearchResult {
         if (node.depth == 0) return SearchResult.raw(evaluation.board_evaluation.material(node.board));
 
