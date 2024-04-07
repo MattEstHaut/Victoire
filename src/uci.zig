@@ -9,7 +9,10 @@ const perft = @import("perft.zig");
 const EngineOptions = struct {
     depth: u32 = 10,
     time: ?i64 = null,
+    table_size: u64 = 70,
 };
+
+const default_options = EngineOptions{};
 
 pub const Engine = struct {
     options: EngineOptions = .{},
@@ -23,6 +26,7 @@ pub const Engine = struct {
     pub fn run(self: *Engine) !void {
         const stdin = std.io.getStdIn().reader();
         const stdout = std.io.getStdOut().writer();
+        const record_size = @sizeOf(@TypeOf(self.data.engine.data.table.data.items[0]));
 
         while (true) {
             var input = std.ArrayList(u8).init(std.heap.page_allocator);
@@ -36,12 +40,19 @@ pub const Engine = struct {
                 if (std.mem.eql(u8, arg, "uci")) {
                     try stdout.print("id name Victoire\n", .{});
                     try stdout.print("id author Delucchi Matteo\n", .{});
+
+                    try stdout.print(
+                        "option name Hash type spin default {d} min 0 max 8192\n",
+                        .{default_options.table_size},
+                    );
+
                     try stdout.print("uciok\n", .{});
                     continue;
                 }
 
                 if (std.mem.eql(u8, arg, "ucinewgame")) {
-                    self.data.engine = victoire.Engine.init();
+                    const size = self.options.table_size * 1048576 / record_size;
+                    self.data.engine = victoire.Engine.initWithSize(size);
                     continue;
                 }
 
@@ -113,6 +124,17 @@ pub const Engine = struct {
                     self.stop();
                     self.data.engine.deinit();
                     break;
+                }
+
+                if (std.mem.eql(u8, arg, "setoption")) {
+                    arg = args.next() orelse continue;
+                    arg = args.next() orelse continue;
+
+                    if (std.mem.eql(u8, arg, "Hash")) {
+                        arg = args.next() orelse continue;
+                        arg = args.next() orelse continue;
+                        self.options.table_size = std.fmt.parseInt(u64, arg, 10) catch continue;
+                    }
                 }
             }
         }
