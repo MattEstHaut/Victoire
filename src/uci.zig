@@ -8,7 +8,8 @@ const perft = @import("perft.zig");
 
 pub const Engine = struct {
     options: struct {
-        depth: u32 = 10,
+        depth: u32 = undefined,
+        time: ?i64 = undefined,
     } = .{},
 
     data: struct {
@@ -79,12 +80,21 @@ pub const Engine = struct {
                         arg = args.next() orelse "1";
                         const depth = try std.fmt.parseInt(u32, arg, 10);
                         _ = try perft.perft(self.data.board, depth);
+                        continue;
                     }
+
+                    self.options.depth = 10;
+                    self.options.time = null;
 
                     while (args.next()) |a| {
                         if (std.mem.eql(u8, a, "depth")) {
                             arg = args.next() orelse break;
                             self.options.depth = try std.fmt.parseInt(u32, arg, 10);
+                        }
+
+                        if (std.mem.eql(u8, a, "time")) {
+                            arg = args.next() orelse break;
+                            self.options.time = try std.fmt.parseInt(i64, arg, 10);
                         }
                     }
 
@@ -104,7 +114,7 @@ pub const Engine = struct {
     fn search(self: *Engine) void {
         const stdout = std.io.getStdOut().writer();
         const t0 = std.time.milliTimestamp();
-        const result = self.data.engine.search(self.data.board, self.options.depth);
+        const result = self.data.engine.search(self.data.board, self.options.depth, self.options.time);
         const dt = std.time.milliTimestamp() - t0;
 
         stdout.print("info score cp {d} depth {d} time {d}\n", .{
