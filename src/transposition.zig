@@ -90,7 +90,7 @@ pub const ZobristHasher = struct {
         return hash;
     }
 
-    pub inline fn update(self: ZobristHasher, hash: u64, move: chess.Move) void {
+    pub inline fn update(self: ZobristHasher, hash: u64, move: chess.Move) u64 {
         var diff = self.black_to_move;
 
         if (move.castling != null) {
