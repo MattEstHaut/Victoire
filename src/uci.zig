@@ -111,6 +111,7 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "quit")) {
+                    self.stop();
                     self.data.engine.deinit();
                     break;
                 }
