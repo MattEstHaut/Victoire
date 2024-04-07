@@ -49,6 +49,12 @@ const SearchNode = struct {
         result.depth += depth;
         return result;
     }
+
+    pub inline fn reduce(self: SearchNode, plies: u32) SearchNode {
+        var result = self;
+        result.depth += plies;
+        return result;
+    }
 };
 
 const SearchResult = struct {
