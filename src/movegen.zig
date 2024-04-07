@@ -473,3 +473,13 @@ pub const MoveList = std.ArrayList(chess.Move);
 pub inline fn append(list: *MoveList, move: chess.Move) void {
     list.append(move);
 }
+
+const EndType = enum {
+    checkmate,
+    stalemate,
+};
+
+/// Gives the end type. Does not check if the game is over.
+pub inline fn end(board: *chess.Board) EndType {
+    return isAttacked(board, board.allies().king);
+}
