@@ -55,12 +55,11 @@ pub const Engine = struct {
                     if (std.mem.eql(u8, arg, "startpos")) {
                         self.data.board = try io.parsing.board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     } else if (std.mem.eql(u8, arg, "fen")) {
-                        arg = args.next() orelse continue;
+                        arg = args.rest();
                         self.data.board = try io.parsing.board(arg);
                     } else continue;
 
-                    arg = args.next() orelse continue;
-                    if (!std.mem.eql(u8, arg, "moves")) continue;
+                    while (args.next()) |a| if (std.mem.eql(u8, a, "moves")) break;
 
                     while (args.next()) |arg_move| {
                         const partial_move = try io.parsing.move(arg_move);
