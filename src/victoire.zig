@@ -101,7 +101,15 @@ pub const Engine = struct {
 
         if (time != null) self.data.deadline.? += std.time.milliTimestamp();
 
-        return self.PVS(SearchNode.root(board, depth));
+        var result = SearchResult.raw(0);
+
+        for (0..depth) |ply| {
+            const ply_result = self.PVS(SearchNode.root(board, ply));
+            if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) break;
+            result = ply_result;
+        }
+
+        return result;
     }
 
     fn shouldAbort(self: *Engine) bool {
