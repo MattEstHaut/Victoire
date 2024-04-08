@@ -87,6 +87,15 @@ const Promotion = enum {
     bishop,
     rook,
     queen,
+
+    pub inline fn piece(self: Promotion) Piece {
+        return switch (self) {
+            .knight => .knight,
+            .bishop => .bishop,
+            .rook => .rook,
+            .queen => .queen,
+        };
+    }
 };
 
 /// Representation of a move.
@@ -100,6 +109,7 @@ pub const Move = struct {
     promotion: ?Promotion = null,
     castling: ?Castling = null, // src and dest must be specified for king
     null_move: bool = false, // Only change side
+    is_check_evasion: bool = false, // Was in check before this move ?
 
     /// Compares two moves.
     pub inline fn sameAs(self: Move, other: Move) bool {

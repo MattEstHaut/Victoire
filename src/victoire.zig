@@ -118,7 +118,7 @@ pub const Engine = struct {
         quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
-        null_move_reduction: bool = true,
+        null_move_pruning: bool = true,
     } = .{},
 
     data: struct {
@@ -213,15 +213,12 @@ pub const Engine = struct {
             pv = record.data.search_result.best_move;
         }
 
-        // Extended null move reduction.
-        if (self.options.null_move_reduction) {
+        // Null move pruning.
+        if (self.options.null_move_pruning) {
             const r: u32 = if (node.depth > 6) 4 else 3;
             const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
-            const child_result = self.PVS(child);
-            if (child_result.score >= mutable_node.beta) mutable_node = mutable_node.reduce(4);
-            if (mutable_node.depth == 0) {
-                return SearchResult.raw(self.quiesce(mutable_node.append(self.options.quiesce_depth)));
-            }
+            const child_result = self.PVS(child).inv();
+            if (child_result.score >= mutable_node.beta) return SearchResult.raw(evaluation.checkmate / 2);
         }
 
         // Generates moves.
@@ -264,6 +261,7 @@ pub const Engine = struct {
                 // Late move reduction.
                 const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
+                    if (move_data.move.is_check_evasion) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
 
@@ -278,9 +276,20 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
-                if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child.reduce(lmr)).inv();
+                const result = res: {
+                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
+                    if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
+                        break :res self.PVS(child.reduce(lmr)).inv();
+                    break :res result;
+                };
+
+                // Re-search at full depth
+                if (lmr > 0 and result.score > mutable_node.alpha) {
+                    const full_result = self.PVS(child.nullWindow()).inv();
+                    if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
+                        break :blk self.PVS(child).inv();
+                }
+
                 break :blk result;
             };
 
