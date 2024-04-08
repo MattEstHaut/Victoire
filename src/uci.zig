@@ -57,7 +57,7 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "isready")) {
-                    try stdout.print("uciok\n", .{});
+                    try stdout.print("readyok\n", .{});
                     continue;
                 }
 
@@ -108,7 +108,7 @@ pub const Engine = struct {
                             self.options.depth = try std.fmt.parseInt(u32, arg, 10);
                         }
 
-                        if (std.mem.eql(u8, a, "time")) {
+                        if (std.mem.eql(u8, a, "movetime")) {
                             arg = args.next() orelse break;
                             self.options.time = try std.fmt.parseInt(i64, arg, 10);
                         }
@@ -152,10 +152,12 @@ pub const Engine = struct {
         const result = self.data.engine.search(self.data.board, self.options.depth, self.options.time);
         const dt = std.time.milliTimestamp() - t0;
 
-        stdout.print("info score cp {d} depth {d} time {d}\n", .{
+        stdout.print("info score cp {d} depth {d} time {d} nodes {d} pv {s}\n", .{
             result.score,
             result.depth,
             dt,
+            self.data.engine.infos.nodes,
+            io.stringify(result.best_move),
         }) catch unreachable;
 
         stdout.print("bestmove {s}\n", .{io.stringify(result.best_move)}) catch unreachable;

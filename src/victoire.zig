@@ -30,7 +30,7 @@ const SearchNode = struct {
     pub inline fn next(self: SearchNode, move: chess.Move) SearchNode {
         return .{
             .board = self.board.copyAndMake(move),
-            .depth = self.depth - 1,
+            .depth = if (self.depth == 0) 0 else self.depth - 1,
             .ply = self.ply + 1,
             .alpha = -self.beta,
             .beta = -self.alpha,
@@ -41,6 +41,12 @@ const SearchNode = struct {
     pub inline fn nullWindow(self: SearchNode) SearchNode {
         var result = self;
         result.alpha = self.beta - 1;
+        return result;
+    }
+
+    pub inline fn betaNullWindow(self: SearchNode) SearchNode {
+        var result = self;
+        result.beta = self.alpha + 1;
         return result;
     }
 
@@ -112,6 +118,7 @@ pub const Engine = struct {
         quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
+        null_move_reduction: bool = true,
     } = .{},
 
     data: struct {
@@ -121,7 +128,9 @@ pub const Engine = struct {
         table: Table = undefined,
     } = .{},
 
-    infos: struct {} = .{},
+    infos: struct {
+        nodes: u64 = 0,
+    } = .{},
 
     pub fn init() Engine {
         var engine = Engine{};
@@ -146,6 +155,7 @@ pub const Engine = struct {
     pub fn search(self: *Engine, board: chess.Board, depth: u32, time: ?i64) SearchResult {
         self.data.aborted = false;
         self.data.deadline = time;
+        self.infos.nodes = 0;
 
         if (time != null) self.data.deadline.? += std.time.milliTimestamp();
 
@@ -180,9 +190,10 @@ pub const Engine = struct {
     fn PVS(self: *Engine, node: SearchNode) SearchResult {
         if (self.shouldAbort()) return SearchResult.raw(0);
         if (node.depth == 0) return SearchResult.raw(self.quiesce(node.append(self.options.quiesce_depth)));
+        self.infos.nodes += 1;
 
         const move_list_len = self.data.move_list.items.len;
-        var search_result = SearchResult{ .depth = node.depth };
+        var search_result = SearchResult{};
         var mutable_node = node;
         var pv: ?chess.Move = null;
         var record_depth: u32 = 0;
@@ -200,6 +211,17 @@ pub const Engine = struct {
                 if (mutable_node.alpha >= mutable_node.beta) return record.data.search_result;
             }
             pv = record.data.search_result.best_move;
+        }
+
+        // Extended null move reduction.
+        if (self.options.null_move_reduction) {
+            const r: u32 = if (node.depth > 6) 4 else 3;
+            const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
+            const child_result = self.PVS(child);
+            if (child_result.score >= mutable_node.beta) mutable_node = mutable_node.reduce(4);
+            if (mutable_node.depth == 0) {
+                return SearchResult.raw(self.quiesce(mutable_node.append(self.options.quiesce_depth)));
+            }
         }
 
         // Generates moves.
@@ -240,7 +262,7 @@ pub const Engine = struct {
                 if (i == 0) break :blk self.PVS(child).inv();
 
                 // Late move reduction.
-                const reduction: u32 = reduc: {
+                const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
@@ -256,14 +278,15 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = self.PVS(child.reduce(reduction).nullWindow()).inv();
+                const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
                 if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child.reduce(reduction)).inv();
+                    break :blk self.PVS(child.reduce(lmr)).inv();
                 break :blk result;
             };
 
             if (child_result.score > mutable_node.alpha) {
                 mutable_node.alpha = child_result.score;
+                search_result.depth = child_result.depth;
                 search_result.best_move = move_data.move;
             }
 
@@ -283,11 +306,13 @@ pub const Engine = struct {
             self.data.table.set(node.hash, record);
         }
 
+        search_result.depth += 1;
         return search_result;
     }
 
     fn quiesce(self: *Engine, node: SearchNode) i64 {
         if (self.shouldAbort()) return 0;
+        self.infos.nodes += 1;
 
         const pat = evaluation.board_evaluation.material(node.board);
         if (node.depth == 0) return pat;
