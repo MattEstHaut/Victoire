@@ -22,5 +22,5 @@ pub fn main() !void {
     std.debug.print("score:     {d}cp\n", .{result.score});
     std.debug.print("depth:     {d}\n", .{result.depth});
     std.debug.print("time:      {d}ms\n", .{dt});
-    std.debug.print("nodes:      {d}\n", .{engine.infos.nodes});
+    std.debug.print("nodes:     {d}\n", .{engine.infos.nodes});
 }
