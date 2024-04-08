@@ -118,7 +118,7 @@ pub const Engine = struct {
         quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
-        null_move_reduction: bool = false,
+        null_move_pruning: bool = true,
     } = .{},
 
     data: struct {
@@ -213,15 +213,12 @@ pub const Engine = struct {
             pv = record.data.search_result.best_move;
         }
 
-        // Extended null move reduction.
-        if (self.options.null_move_reduction) {
+        // Null move pruning.
+        if (self.options.null_move_pruning) {
             const r: u32 = if (node.depth > 6) 4 else 3;
             const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
-            const child_result = self.PVS(child);
-            if (child_result.score >= mutable_node.beta) mutable_node = mutable_node.reduce(4);
-            if (mutable_node.depth == 0) {
-                return SearchResult.raw(self.quiesce(mutable_node.append(self.options.quiesce_depth)));
-            }
+            const child_result = self.PVS(child).inv();
+            if (child_result.score >= mutable_node.beta) return SearchResult.raw(evaluation.checkmate / 2);
         }
 
         // Generates moves.
