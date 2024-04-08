@@ -128,7 +128,9 @@ pub const Engine = struct {
         table: Table = undefined,
     } = .{},
 
-    infos: struct {} = .{},
+    infos: struct {
+        nodes: u64 = 0,
+    } = .{},
 
     pub fn init() Engine {
         var engine = Engine{};
@@ -153,6 +155,7 @@ pub const Engine = struct {
     pub fn search(self: *Engine, board: chess.Board, depth: u32, time: ?i64) SearchResult {
         self.data.aborted = false;
         self.data.deadline = time;
+        self.infos.nodes = 0;
 
         if (time != null) self.data.deadline.? += std.time.milliTimestamp();
 
@@ -187,9 +190,10 @@ pub const Engine = struct {
     fn PVS(self: *Engine, node: SearchNode) SearchResult {
         if (self.shouldAbort()) return SearchResult.raw(0);
         if (node.depth == 0) return SearchResult.raw(self.quiesce(node.append(self.options.quiesce_depth)));
+        self.infos.nodes += 1;
 
         const move_list_len = self.data.move_list.items.len;
-        var search_result = SearchResult{ .depth = node.depth };
+        var search_result = SearchResult{};
         var mutable_node = node;
         var pv: ?chess.Move = null;
         var record_depth: u32 = 0;
@@ -282,6 +286,7 @@ pub const Engine = struct {
 
             if (child_result.score > mutable_node.alpha) {
                 mutable_node.alpha = child_result.score;
+                search_result.depth = child_result.depth;
                 search_result.best_move = move_data.move;
             }
 
@@ -301,11 +306,13 @@ pub const Engine = struct {
             self.data.table.set(node.hash, record);
         }
 
+        search_result.depth += 1;
         return search_result;
     }
 
     fn quiesce(self: *Engine, node: SearchNode) i64 {
         if (self.shouldAbort()) return 0;
+        self.infos.nodes += 1;
 
         const pat = evaluation.board_evaluation.material(node.board);
         if (node.depth == 0) return pat;
