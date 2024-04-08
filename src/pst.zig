@@ -1,3 +1,5 @@
+const chess = @import("chess.zig");
+
 pub const SidePieceSquareTables = struct {
     pawn: [64]i64,
     knight: [64]i64,
@@ -10,6 +12,10 @@ pub const SidePieceSquareTables = struct {
 const PieceSquareTables = struct {
     white: SidePieceSquareTables,
     black: SidePieceSquareTables,
+
+    pub inline fn get(self: PieceSquareTables, color: chess.Color) SidePieceSquareTables {
+        return if (color == .white) self.white else self.black;
+    }
 };
 
 pub const opening: PieceSquareTables = .{
