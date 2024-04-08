@@ -118,7 +118,7 @@ pub const Engine = struct {
         quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
-        null_move_reduction: bool = true,
+        null_move_reduction: bool = false,
     } = .{},
 
     data: struct {
@@ -278,9 +278,20 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
-                if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child.reduce(lmr)).inv();
+                const result = res: {
+                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
+                    if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
+                        break :res self.PVS(child.reduce(lmr)).inv();
+                    break :res result;
+                };
+
+                // Re-search at full depth
+                if (lmr > 0 and result.score > mutable_node.alpha) {
+                    const full_result = self.PVS(child.nullWindow()).inv();
+                    if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
+                        break :blk self.PVS(child).inv();
+                }
+
                 break :blk result;
             };
 
