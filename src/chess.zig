@@ -109,6 +109,7 @@ pub const Move = struct {
     promotion: ?Promotion = null,
     castling: ?Castling = null, // src and dest must be specified for king
     null_move: bool = false, // Only change side
+    is_check_evasion: bool = false, // Was in check before this move ?
 
     /// Compares two moves.
     pub inline fn sameAs(self: Move, other: Move) bool {
