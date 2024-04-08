@@ -90,7 +90,6 @@ pub const Engine = struct {
 
                 if (std.mem.eql(u8, arg, "go")) {
                     if (!self.data.is_init) continue;
-                    self.options = EngineOptions{};
 
                     arg = args.peek() orelse {
                         self.search();
