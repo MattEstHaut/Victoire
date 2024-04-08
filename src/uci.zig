@@ -18,7 +18,7 @@ pub const Engine = struct {
     options: EngineOptions = .{},
 
     data: struct {
-        board: chess.Board = .{},
+        board: chess.Board = chess.Board.empty(),
         engine: victoire.Engine = undefined,
         search_thread: ?std.Thread = null,
     } = .{},
