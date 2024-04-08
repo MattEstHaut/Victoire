@@ -108,7 +108,7 @@ pub const Engine = struct {
                             self.options.depth = try std.fmt.parseInt(u32, arg, 10);
                         }
 
-                        if (std.mem.eql(u8, a, "time")) {
+                        if (std.mem.eql(u8, a, "movetime")) {
                             arg = args.next() orelse break;
                             self.options.time = try std.fmt.parseInt(i64, arg, 10);
                         }
