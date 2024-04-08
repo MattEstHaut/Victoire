@@ -25,11 +25,9 @@ inline fn mul(color: chess.Color) i64 {
 pub const Evaluator = struct {
     opening_score: i64 = 0,
     endgame_score: i64 = 0,
-    material_score: i64 = 0,
     pieces_phase: i64 = 24,
     phase: i64 = 0,
     side: chess.Color = .white,
-    mode: enum { tapered, material } = .tapered,
 
     pub fn init(board: chess.Board) Evaluator {
         var evaluator = Evaluator{};
@@ -46,17 +44,6 @@ pub const Evaluator = struct {
         evaluator.pieces_phase -= @popCount(mutable_board.white.queens) * 4;
         evaluator.pieces_phase -= @popCount(mutable_board.black.queens) * 4;
         evaluator.phase = @divTrunc(evaluator.pieces_phase * 256 + 12, 24);
-
-        evaluator.material_score += @as(i64, @popCount(board.white.pawns)) * 100;
-        evaluator.material_score -= @as(i64, @popCount(board.black.pawns)) * 100;
-        evaluator.material_score += @as(i64, @popCount(board.white.knights)) * 320;
-        evaluator.material_score -= @as(i64, @popCount(board.black.knights)) * 320;
-        evaluator.material_score += @as(i64, @popCount(board.white.bishops)) * 330;
-        evaluator.material_score -= @as(i64, @popCount(board.black.bishops)) * 330;
-        evaluator.material_score += @as(i64, @popCount(board.white.rooks)) * 500;
-        evaluator.material_score -= @as(i64, @popCount(board.black.rooks)) * 500;
-        evaluator.material_score += @as(i64, @popCount(board.white.queens)) * 900;
-        evaluator.material_score -= @as(i64, @popCount(board.black.queens)) * 900;
 
         for (0..64) |i| {
             const mask = @as(u64, 1) << @intCast(i);
@@ -95,13 +82,6 @@ pub const Evaluator = struct {
                     .rook => result.pieces_phase -= 2,
                     .queen => result.pieces_phase -= 4,
                 }
-
-                switch (move.promotion.?) {
-                    .knight => result.material_score += m * 220,
-                    .bishop => result.material_score += m * 230,
-                    .rook => result.material_score += m * 400,
-                    .queen => result.material_score += m * 800,
-                }
             }
         }
 
@@ -119,15 +99,6 @@ pub const Evaluator = struct {
                 .bishop => result.pieces_phase += 1,
                 .rook => result.pieces_phase += 2,
                 .queen => result.pieces_phase += 4,
-                else => {},
-            }
-
-            switch (move.capture.?) {
-                .pawn => result.material_score += m * 100,
-                .knight => result.material_score += m * 320,
-                .bishop => result.material_score += m * 330,
-                .rook => result.material_score += m * 500,
-                .queen => result.material_score += m * 900,
                 else => {},
             }
         }
@@ -168,9 +139,6 @@ pub const Evaluator = struct {
 
     pub inline fn evaluate(self: Evaluator) i64 {
         const m = mul(self.side);
-        return switch (self.mode) {
-            .tapered => m * @divTrunc(self.opening_score * (256 - self.phase) + self.endgame_score * self.phase, 256),
-            .material => m * self.material_score,
-        };
+        return m * @divTrunc(self.opening_score * (256 - self.phase) + self.endgame_score * self.phase, 256);
     }
 };
