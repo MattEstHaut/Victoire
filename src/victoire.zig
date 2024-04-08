@@ -109,7 +109,7 @@ const TranspositionData = struct {
 /// The Victory Chess Engine.
 pub const Engine = struct {
     options: struct {
-        quiesce_depth: u32 = 6,
+        quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
     } = .{},
@@ -242,11 +242,18 @@ pub const Engine = struct {
                 // Late move reduction.
                 const reduction: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
-                    if (node.depth < 6) break :reduc 0;
-                    if (i < 5) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
-                    if (i < 10) break :reduc 1;
-                    break :reduc 2;
+                    if (node.depth < 4) break :reduc 0;
+
+                    const last_depth = node.ply + node.depth - 1;
+                    if (last_depth < 8) {
+                        if (i < 5) break :reduc 0;
+                        break :reduc 1;
+                    } else {
+                        if (i < 4) break :reduc 0;
+                        if (i < 8) break :reduc 1;
+                        break :reduc node.depth / 2;
+                    }
                 };
 
                 const result = self.PVS(child.reduce(reduction).nullWindow()).inv();
