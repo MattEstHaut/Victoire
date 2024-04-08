@@ -30,7 +30,7 @@ const SearchNode = struct {
     pub inline fn next(self: SearchNode, move: chess.Move) SearchNode {
         return .{
             .board = self.board.copyAndMake(move),
-            .depth = self.depth - 1,
+            .depth = if (self.depth == 0) 0 else self.depth - 1,
             .ply = self.ply + 1,
             .alpha = -self.beta,
             .beta = -self.alpha,
@@ -41,6 +41,12 @@ const SearchNode = struct {
     pub inline fn nullWindow(self: SearchNode) SearchNode {
         var result = self;
         result.alpha = self.beta - 1;
+        return result;
+    }
+
+    pub inline fn betaNullWindow(self: SearchNode) SearchNode {
+        var result = self;
+        result.beta = self.alpha + 1;
         return result;
     }
 
@@ -112,6 +118,7 @@ pub const Engine = struct {
         quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
+        null_move_reduction: bool = true,
     } = .{},
 
     data: struct {
@@ -202,6 +209,17 @@ pub const Engine = struct {
             pv = record.data.search_result.best_move;
         }
 
+        // Extended null move reduction.
+        if (self.options.null_move_reduction) {
+            const r: u32 = if (node.depth > 6) 4 else 3;
+            const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
+            const child_result = self.PVS(child);
+            if (child_result.score >= mutable_node.beta) mutable_node = mutable_node.reduce(4);
+            if (mutable_node.depth == 0) {
+                return SearchResult.raw(self.quiesce(mutable_node.append(self.options.quiesce_depth)));
+            }
+        }
+
         // Generates moves.
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
@@ -240,7 +258,7 @@ pub const Engine = struct {
                 if (i == 0) break :blk self.PVS(child).inv();
 
                 // Late move reduction.
-                const reduction: u32 = reduc: {
+                const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
@@ -256,9 +274,9 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = self.PVS(child.reduce(reduction).nullWindow()).inv();
+                const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
                 if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child.reduce(reduction)).inv();
+                    break :blk self.PVS(child.reduce(lmr)).inv();
                 break :blk result;
             };
 
