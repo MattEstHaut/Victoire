@@ -18,10 +18,9 @@ pub fn main() !void {
     const result = engine.search(board, depth, null);
     const dt = std.time.milliTimestamp() - t0;
 
-    std.debug.print("{s}: {d} (d={d},t={d}ms)\n", .{
-        io.stringify(result.best_move),
-        result.score,
-        result.depth,
-        dt,
-    });
+    std.debug.print("bestmove:  {s}\n", .{io.stringify(result.best_move)});
+    std.debug.print("score:     {d}cp\n", .{result.score});
+    std.debug.print("depth:     {d}\n", .{result.depth});
+    std.debug.print("time:      {d}ms\n", .{dt});
+    std.debug.print("nodes:      {d}\n", .{engine.infos.nodes});
 }
