@@ -106,8 +106,8 @@ pub const Evaluator = struct {
                 break :blk move.dest;
             };
 
-            result.opening_score -= m * value(move.capture.?, tables.opening.get(move.side.other()), @ctz(dest));
-            result.endgame_score -= m * value(move.capture.?, tables.opening.get(move.side.other()), @ctz(dest));
+            result.opening_score += m * value(move.capture.?, tables.opening.get(move.side.other()), @ctz(dest));
+            result.endgame_score += m * value(move.capture.?, tables.opening.get(move.side.other()), @ctz(dest));
 
             switch (move.capture.?) {
                 .knight => result.pieces_phase += 1,
