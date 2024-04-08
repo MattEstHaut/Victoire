@@ -18,9 +18,10 @@ pub const Engine = struct {
     options: EngineOptions = .{},
 
     data: struct {
-        board: chess.Board = .{},
-        engine: victoire.Engine = undefined,
+        board: chess.Board = chess.Board.empty(),
+        engine: victoire.Engine = .{},
         search_thread: ?std.Thread = null,
+        is_init: bool = false,
     } = .{},
 
     pub fn run(self: *Engine) !void {
@@ -53,6 +54,7 @@ pub const Engine = struct {
                 if (std.mem.eql(u8, arg, "ucinewgame")) {
                     const size = self.options.table_size * 1048576 / record_size;
                     self.data.engine = victoire.Engine.initWithSize(size);
+                    self.data.is_init = true;
                     continue;
                 }
 
@@ -87,7 +89,7 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "go")) {
-                    self.options = EngineOptions{};
+                    if (!self.data.is_init) continue;
 
                     arg = args.peek() orelse {
                         self.search();

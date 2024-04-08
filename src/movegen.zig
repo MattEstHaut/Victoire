@@ -223,7 +223,13 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     };
 
     {
-        var move = chess.Move{ .src = positions.king, .piece = .king, .side = board.side };
+        var move = chess.Move{
+            .src = positions.king,
+            .piece = .king,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         const atks = lookup.king(move.src) & empty_or_enemy;
         var dest_iter = masking.BitIterator.init(atks);
         while (dest_iter.next()) |dest| {
@@ -242,7 +248,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     const pin_ad = pin_and_check.pin_asc | pin_and_check.pin_desc;
 
     {
-        var move = chess.Move{ .piece = .knight, .side = board.side };
+        var move = chess.Move{
+            .piece = .knight,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.knights & ~(pin_hv | pin_ad));
         while (src_iter.next()) |src| {
             const atks = lookup.knight(src) & empty_or_enemy & pin_and_check.check;
@@ -258,7 +269,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     }
 
     {
-        var move = chess.Move{ .piece = .bishop, .side = board.side };
+        var move = chess.Move{
+            .piece = .bishop,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.bishops & ~pin_hv);
         while (src_iter.next()) |src| {
             var pin = masking.full;
@@ -281,7 +297,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     }
 
     {
-        var move = chess.Move{ .piece = .rook, .side = board.side };
+        var move = chess.Move{
+            .piece = .rook,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.rooks & ~pin_ad);
         while (src_iter.next()) |src| {
             var pin = masking.full;
@@ -304,7 +325,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     }
 
     {
-        var move = chess.Move{ .piece = .queen, .side = board.side };
+        var move = chess.Move{
+            .piece = .queen,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.queens);
         while (src_iter.next()) |src| {
             var pin = masking.full;
@@ -331,7 +357,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     }
 
     {
-        var move = chess.Move{ .piece = .pawn, .side = board.side };
+        var move = chess.Move{
+            .piece = .pawn,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.pawns & ~(pin_ad | pin_and_check.pin_hor));
         while (src_iter.next()) |src| {
             move.dest = lookup.pawnsForward(src, occupied, board.side) & pin_and_check.check;
@@ -357,7 +388,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     }
 
     {
-        var move = chess.Move{ .piece = .pawn, .side = board.side };
+        var move = chess.Move{
+            .piece = .pawn,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.pawns & ~(pin_ad | pin_and_check.pin_hor));
         while (src_iter.next()) |src| {
             move.dest = lookup.pawnsDoubleForward(src, occupied, board.side) & pin_and_check.check;
@@ -369,7 +405,12 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
     }
 
     {
-        var move = chess.Move{ .piece = .pawn, .side = board.side };
+        var move = chess.Move{
+            .piece = .pawn,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
         var src_iter = masking.BitIterator.init(positions.pawns & ~pin_hv);
         while (src_iter.next()) |src| {
             var pin = masking.full;
@@ -414,6 +455,7 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
             .capture = .pawn,
             .en_passant = true,
             .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
         };
 
         const en_passant_check = lookup.pawnsForward(pin_and_check.check, 0, board.side) & move.dest | pin_and_check.check;
@@ -432,6 +474,7 @@ pub fn generate(board: chess.Board, context: anytype, handler: fn (@TypeOf(conte
 
     {
         var move = chess.Move{ .piece = .king, .side = board.side, .src = positions.king };
+
         switch (board.side) {
             .white => {
                 if (castling_right.K(board)) {

@@ -15,6 +15,7 @@ const SearchNode = struct {
     alpha: i64,
     beta: i64,
     hash: u64,
+    eval: evaluation.Evaluator,
 
     pub inline fn root(board: chess.Board, depth: u32) SearchNode {
         return .{
@@ -24,6 +25,7 @@ const SearchNode = struct {
             .alpha = -evaluation.checkmate,
             .beta = evaluation.checkmate,
             .hash = hasher.calculate(board),
+            .eval = evaluation.Evaluator.init(board),
         };
     }
 
@@ -35,6 +37,7 @@ const SearchNode = struct {
             .alpha = -self.beta,
             .beta = -self.alpha,
             .hash = hasher.update(self.hash, move),
+            .eval = self.eval.next(move),
         };
     }
 
@@ -118,7 +121,7 @@ pub const Engine = struct {
         quiesce_depth: u32 = 12,
         table_size: u64 = 1_000_000,
         late_move_reduction: bool = true,
-        null_move_reduction: bool = true,
+        null_move_pruning: bool = true,
     } = .{},
 
     data: struct {
@@ -213,15 +216,12 @@ pub const Engine = struct {
             pv = record.data.search_result.best_move;
         }
 
-        // Extended null move reduction.
-        if (self.options.null_move_reduction) {
+        // Null move pruning.
+        if (self.options.null_move_pruning) {
             const r: u32 = if (node.depth > 6) 4 else 3;
             const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
-            const child_result = self.PVS(child);
-            if (child_result.score >= mutable_node.beta) mutable_node = mutable_node.reduce(4);
-            if (mutable_node.depth == 0) {
-                return SearchResult.raw(self.quiesce(mutable_node.append(self.options.quiesce_depth)));
-            }
+            const child_result = self.PVS(child).inv();
+            if (child_result.score >= mutable_node.beta) return SearchResult.raw(evaluation.checkmate / 2);
         }
 
         // Generates moves.
@@ -247,7 +247,7 @@ pub const Engine = struct {
             if (record != null and record.?.data.flag == .exact) {
                 const sr = record.?.data.search_result;
                 move_data.score = sr.score + sr.depth * 10;
-            } else move_data.score = evaluation.move_evaluation.score(move_data.move) - 200;
+            } else move_data.score = -node.eval.next(move_data.move).evaluate();
         }
 
         // Orders moves.
@@ -264,6 +264,7 @@ pub const Engine = struct {
                 // Late move reduction.
                 const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
+                    if (move_data.move.is_check_evasion) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
 
@@ -278,9 +279,20 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
-                if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child.reduce(lmr)).inv();
+                const result = res: {
+                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
+                    if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
+                        break :res self.PVS(child.reduce(lmr)).inv();
+                    break :res result;
+                };
+
+                // Re-search at full depth
+                if (lmr > 0 and result.score > mutable_node.alpha) {
+                    const full_result = self.PVS(child.nullWindow()).inv();
+                    if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
+                        break :blk self.PVS(child).inv();
+                }
+
                 break :blk result;
             };
 
@@ -314,7 +326,7 @@ pub const Engine = struct {
         if (self.shouldAbort()) return 0;
         self.infos.nodes += 1;
 
-        const pat = evaluation.board_evaluation.material(node.board);
+        const pat = node.eval.evaluate();
         if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;
