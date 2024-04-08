@@ -30,7 +30,7 @@ const SearchNode = struct {
     pub inline fn next(self: SearchNode, move: chess.Move) SearchNode {
         return .{
             .board = self.board.copyAndMake(move),
-            .depth = self.depth - 1,
+            .depth = if (self.depth == 0) 0 else self.depth - 1,
             .ply = self.ply + 1,
             .alpha = -self.beta,
             .beta = -self.alpha,
