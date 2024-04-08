@@ -154,14 +154,16 @@ pub const Engine = struct {
         const result = self.data.engine.search(self.data.board, self.options.depth, self.options.time);
         const dt = std.time.milliTimestamp() - t0;
 
+        var stringifier = io.MoveStringifier{};
+
         stdout.print("info score cp {d} depth {d} time {d} nodes {d} pv {s}\n", .{
             result.score,
             result.depth,
             dt,
             self.data.engine.infos.nodes,
-            io.stringify(result.best_move),
+            stringifier.stringify(result.best_move),
         }) catch unreachable;
 
-        stdout.print("bestmove {s}\n", .{io.stringify(result.best_move)}) catch unreachable;
+        stdout.print("bestmove {s}\n", .{stringifier.stringify(result.best_move)}) catch unreachable;
     }
 };
