@@ -143,6 +143,13 @@ pub const Board = struct {
     halfmove_clock: u8 = 0, // Not implemented
     fullmove_number: u16 = 1, // Not implemented
 
+    pub inline fn empty() Board {
+        var board = Board{};
+        board.white.king = squares.e1;
+        board.black.king = squares.e8;
+        return board;
+    }
+
     pub inline fn allies(self: *Board) *Positions {
         return switch (self.side) {
             .white => &self.white,
