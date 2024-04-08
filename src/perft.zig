@@ -37,11 +37,12 @@ pub fn perft(board: chess.Board, depth: u32) !u32 {
 
     var total_nodes: u32 = 0;
     const moves_count = movegen.generate(board, &list, perftHandler);
+    var stringifier = io.MoveStringifier{};
 
     for (0..moves_count) |_| {
         const move = list.pop();
         const nodes = try perftCallback(board.copyAndMake(move), depth - 1, &list);
-        std.debug.print("{s}: {d}\n", .{ io.stringify(move), nodes });
+        std.debug.print("{s}: {d}\n", .{ stringifier.stringify(move), nodes });
         total_nodes += nodes;
     }
 
