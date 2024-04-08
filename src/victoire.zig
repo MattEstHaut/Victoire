@@ -189,7 +189,7 @@ pub const Engine = struct {
         if (node.depth == 0) return SearchResult.raw(self.quiesce(node.append(self.options.quiesce_depth)));
 
         const move_list_len = self.data.move_list.items.len;
-        var search_result = SearchResult{ .depth = node.depth };
+        var search_result = SearchResult{};
         var mutable_node = node;
         var pv: ?chess.Move = null;
         var record_depth: u32 = 0;
@@ -282,6 +282,7 @@ pub const Engine = struct {
 
             if (child_result.score > mutable_node.alpha) {
                 mutable_node.alpha = child_result.score;
+                search_result.depth = child_result.depth;
                 search_result.best_move = move_data.move;
             }
 
@@ -301,6 +302,7 @@ pub const Engine = struct {
             self.data.table.set(node.hash, record);
         }
 
+        search_result.depth += 1;
         return search_result;
     }
 
