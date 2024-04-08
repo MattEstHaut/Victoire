@@ -15,6 +15,7 @@ const SearchNode = struct {
     alpha: i64,
     beta: i64,
     hash: u64,
+    eval: evaluation.Evaluator,
 
     pub inline fn root(board: chess.Board, depth: u32) SearchNode {
         return .{
@@ -24,6 +25,7 @@ const SearchNode = struct {
             .alpha = -evaluation.checkmate,
             .beta = evaluation.checkmate,
             .hash = hasher.calculate(board),
+            .eval = evaluation.Evaluator.init(board),
         };
     }
 
@@ -35,6 +37,7 @@ const SearchNode = struct {
             .alpha = -self.beta,
             .beta = -self.alpha,
             .hash = hasher.update(self.hash, move),
+            .eval = self.eval.next(move),
         };
     }
 
@@ -323,7 +326,7 @@ pub const Engine = struct {
         if (self.shouldAbort()) return 0;
         self.infos.nodes += 1;
 
-        const pat = evaluation.board_evaluation.material(node.board);
+        const pat = node.eval.material(node.board.side);
         if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;
