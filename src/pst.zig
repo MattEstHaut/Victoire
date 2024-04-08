@@ -1,4 +1,4 @@
-const SidePieceSquareTables = struct {
+pub const SidePieceSquareTables = struct {
     pawn: [64]i64,
     knight: [64]i64,
     bishop: [64]i64,
