@@ -87,6 +87,15 @@ const Promotion = enum {
     bishop,
     rook,
     queen,
+
+    pub inline fn piece(self: Promotion) Piece {
+        return switch (self) {
+            .knight => .knight,
+            .bishop => .bishop,
+            .rook => .rook,
+            .queen => .queen,
+        };
+    }
 };
 
 /// Representation of a move.
