@@ -261,6 +261,7 @@ pub const Engine = struct {
                 // Late move reduction.
                 const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
+                    if (move_data.move.is_check_evasion) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
 
