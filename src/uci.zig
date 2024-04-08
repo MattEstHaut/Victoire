@@ -57,7 +57,7 @@ pub const Engine = struct {
                 }
 
                 if (std.mem.eql(u8, arg, "isready")) {
-                    try stdout.print("uciok\n", .{});
+                    try stdout.print("readyok\n", .{});
                     continue;
                 }
 
