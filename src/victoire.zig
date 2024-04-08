@@ -247,7 +247,7 @@ pub const Engine = struct {
             if (record != null and record.?.data.flag == .exact) {
                 const sr = record.?.data.search_result;
                 move_data.score = sr.score + sr.depth * 10;
-            } else move_data.score = evaluation.move_evaluation.score(move_data.move) - 200;
+            } else move_data.score = -node.eval.next(move_data.move).evaluate();
         }
 
         // Orders moves.
@@ -326,7 +326,7 @@ pub const Engine = struct {
         if (self.shouldAbort()) return 0;
         self.infos.nodes += 1;
 
-        const pat = node.eval.material(node.board.side);
+        const pat = node.eval.evaluate();
         if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;

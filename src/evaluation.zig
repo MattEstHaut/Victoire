@@ -28,10 +28,14 @@ pub const Evaluator = struct {
     material_score: i64 = 0,
     pieces_phase: i64 = 24,
     phase: i64 = 0,
+    side: chess.Color = .white,
+    mode: enum { tapered, material } = .tapered,
 
     pub fn init(board: chess.Board) Evaluator {
         var evaluator = Evaluator{};
         var mutable_board = board;
+
+        evaluator.side = board.side;
 
         evaluator.pieces_phase -= @popCount(mutable_board.white.knights);
         evaluator.pieces_phase -= @popCount(mutable_board.black.knights);
@@ -71,9 +75,10 @@ pub const Evaluator = struct {
     }
 
     pub inline fn next(self: Evaluator, move: chess.Move) Evaluator {
-        if (move.null_move) return self;
-        const m = mul(move.side);
         var result = self;
+        result.side = result.side.other();
+        if (move.null_move) return result;
+        const m = mul(move.side);
 
         result.opening_score -= m * value(move.piece, tables.opening.get(move.side), @ctz(move.src));
         result.endgame_score -= m * value(move.piece, tables.endgame.get(move.side), @ctz(move.src));
@@ -161,68 +166,11 @@ pub const Evaluator = struct {
         return result;
     }
 
-    pub inline fn evaluate(self: Evaluator, side: chess.Color) i64 {
-        const eval: i64 = @divTrunc(self.opening_score * (256 - self.phase) + self.endgame_score * self.phase, 256);
-        return mul(side) * eval;
-    }
-
-    pub fn material(self: Evaluator, side: chess.Color) i64 {
-        return if (side == .white) self.material_score else -self.material_score;
-    }
-};
-
-/// Contains evaluation functions for Board.
-pub const board_evaluation = struct {
-    pub inline fn material(board: chess.Board) i64 {
-        var score: i64 = 0;
-
-        score += @as(i64, @popCount(board.white.pawns)) * 100;
-        score -= @as(i64, @popCount(board.black.pawns)) * 100;
-        score += @as(i64, @popCount(board.white.knights)) * 320;
-        score -= @as(i64, @popCount(board.black.knights)) * 320;
-        score += @as(i64, @popCount(board.white.bishops)) * 330;
-        score -= @as(i64, @popCount(board.black.bishops)) * 330;
-        score += @as(i64, @popCount(board.white.rooks)) * 500;
-        score -= @as(i64, @popCount(board.black.rooks)) * 500;
-        score += @as(i64, @popCount(board.white.queens)) * 900;
-        score -= @as(i64, @popCount(board.black.queens)) * 900;
-
-        return if (board.side == .white) score else -score;
-    }
-};
-
-/// Contains evaluation functions for Move.
-pub const move_evaluation = struct {
-    pub inline fn score(move: chess.Move) i64 {
-        if (move.promotion != null) return switch (move.promotion.?) {
-            .queen => 800,
-            .rook => 400,
-            .bishop => 230,
-            .knight => 220,
+    pub inline fn evaluate(self: Evaluator) i64 {
+        const m = mul(self.side);
+        return switch (self.mode) {
+            .tapered => m * @divTrunc(self.opening_score * (256 - self.phase) + self.endgame_score * self.phase, 256),
+            .material => m * self.material_score,
         };
-
-        if (move.capture != null) {
-            const capture_score: i64 = switch (move.capture.?) {
-                .pawn => 100,
-                .knight => 320,
-                .bishop => 330,
-                .rook => 500,
-                .queen => 900,
-                .king => 20_000,
-            };
-
-            const penalty: i64 = switch (move.piece) {
-                .pawn => 0,
-                .knight => 30,
-                .bishop => 30,
-                .rook => 50,
-                .queen => 90,
-                .king => 100,
-            };
-
-            return capture_score - penalty;
-        }
-
-        return 0;
     }
 };
