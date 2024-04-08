@@ -240,7 +240,7 @@ pub const Engine = struct {
                 if (i == 0) break :blk self.PVS(child).inv();
 
                 // Late move reduction.
-                const reduction: u32 = reduc: {
+                const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
@@ -256,9 +256,9 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = self.PVS(child.reduce(reduction).nullWindow()).inv();
+                const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
                 if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                    break :blk self.PVS(child.reduce(reduction)).inv();
+                    break :blk self.PVS(child.reduce(lmr)).inv();
                 break :blk result;
             };
 
