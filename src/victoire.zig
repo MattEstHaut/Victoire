@@ -85,7 +85,8 @@ const SearchResult = struct {
 
     pub inline fn checkmate(self: SearchResult) ?i64 {
         if (@abs(self.score) < evaluation.checkmate - 200) return null;
-        return @divFloor(self.depth + 1, 2);
+        const mul = if (self.score > 0) 1 else -1;
+        return mul * @divFloor(self.depth + 1, 2);
     }
 };
 
