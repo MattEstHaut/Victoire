@@ -14,7 +14,7 @@ Next, clone this repository and build the project using the command:
 zig build -Doptimize=ReleaseFast
 ```
 
-You can now connect **Victoire** to a **GUI** such as [Cute Chess](https://github.com/cutechess/cutechess) or directly run the engine whit the command:
+You can now connect **Victoire** to a **GUI** such as [Cute Chess](https://github.com/cutechess/cutechess) or directly run the engine with the command:
 
 ```bash
 zig-out/bin/Victoire
@@ -39,7 +39,7 @@ zig-out/bin/Victoire
 
 ### ⚙️ Available options
 
-| **Option**   | **type** | **Description**                  |
+| **Option**   | **Type** | **Description**                  |
 |--------------|----------|----------------------------------|
 | **`Hash`**   | `spin`   | Transposition table size (in MB) |
 | **`Ponder`** | `check`  | Enable pondering                 |
