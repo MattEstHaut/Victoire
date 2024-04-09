@@ -22,6 +22,7 @@ pub const Engine = struct {
         board: chess.Board = chess.Board.empty(),
         engine: victoire.Engine = .{},
         search_thread: ?std.Thread = null,
+        ponder_thread: ?std.Thread = null,
         is_init: bool = false,
     } = .{},
 
@@ -158,7 +159,9 @@ pub const Engine = struct {
     fn stop(self: *Engine) void {
         self.data.engine.stop();
         if (self.data.search_thread != null) self.data.search_thread.?.join();
+        if (self.data.ponder_thread != null) self.data.ponder_thread.?.join();
         self.data.search_thread = null;
+        self.data.ponder_thread = null;
     }
 
     fn search(self: *Engine) void {
@@ -178,5 +181,14 @@ pub const Engine = struct {
         }) catch unreachable;
 
         stdout.print("bestmove {s}\n", .{stringifier.stringify(result.best_move)}) catch unreachable;
+
+        if (self.options.ponder) {
+            const child = self.data.board.copyAndMake(result.best_move);
+            self.data.ponder_thread = std.Thread.spawn(.{}, ponder, .{ self, child }) catch unreachable;
+        }
+    }
+
+    fn ponder(self: *Engine, board: chess.Board) void {
+        _ = self.data.engine.search(board, 100, null);
     }
 };
