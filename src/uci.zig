@@ -10,6 +10,7 @@ const EngineOptions = struct {
     depth: u32 = 10,
     time: ?i64 = null,
     table_size: u64 = 70,
+    ponder: bool = false,
 };
 
 const default_options = EngineOptions{};
@@ -45,6 +46,11 @@ pub const Engine = struct {
                     try stdout.print(
                         "option name Hash type spin default {d} min 0 max 8192\n",
                         .{default_options.table_size},
+                    );
+
+                    try stdout.print(
+                        "option name Ponder type check default {any}\n",
+                        .{default_options.ponder},
                     );
 
                     try stdout.print("uciok\n", .{});
@@ -136,6 +142,13 @@ pub const Engine = struct {
                         arg = args.next() orelse continue;
                         arg = args.next() orelse continue;
                         self.options.table_size = std.fmt.parseInt(u64, arg, 10) catch continue;
+                    }
+
+                    if (std.mem.eql(u8, arg, "Ponder")) {
+                        arg = args.next() orelse continue;
+                        arg = args.next() orelse continue;
+                        if (std.mem.eql(u8, arg, "true")) self.options.ponder = true;
+                        if (std.mem.eql(u8, arg, "false")) self.options.ponder = false;
                     }
                 }
             }
