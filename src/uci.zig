@@ -75,7 +75,7 @@ pub const Engine = struct {
                         self.data.board = try io.parsing.board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     } else if (std.mem.eql(u8, arg, "fen")) {
                         arg = args.rest();
-                        self.data.board = try io.parsing.board(arg);
+                        self.data.board = io.parsing.board(arg) catch continue;
                     } else continue;
 
                     while (args.next()) |a| if (std.mem.eql(u8, a, "moves")) break;
@@ -106,7 +106,7 @@ pub const Engine = struct {
                         _ = args.next();
                         arg = args.next() orelse "1";
                         const depth = try std.fmt.parseInt(u32, arg, 10);
-                        _ = try perft.perft(self.data.board, depth);
+                        _ = perft.perft(self.data.board, depth) catch continue;
                         continue;
                     }
 
