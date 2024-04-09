@@ -26,6 +26,8 @@ zig-out/bin/Victoire
 
 ### 🎮 Available commands
 
+The commands interpreted by the engine are listed below, more **UCI** protocol commands will be added in the future.
+
 | **Commands**     | **Description**       | **Comments**                                      |
 |------------------|-----------------------|---------------------------------------------------|
 | **`uci`**        |                       |                                                   |
@@ -35,16 +37,16 @@ zig-out/bin/Victoire
 | **`go`**         | Start the search      | Support `movetime` (in ms) and `depth` (in plies) |
 | **`stop`**       | Stop the search       | Stop ponder thread                                |
 | **`setoption`**  | Set an option         |                                                   |
-| **`quit`**       | Quit the engine       |                                                   |
+| **`quit`**       | Quit the engine       | Can be used at any time                           |
 
 ### ⚙️ Available options
 
-| **Option**   | **Type** | **Description**                  |
-|--------------|----------|----------------------------------|
-| **`Hash`**   | `spin`   | Transposition table size (in MB) |
-| **`Ponder`** | `check`  | Enable pondering                 |
+Here is the list of currently available options. Use the command `setoption name <option name> value <value>` to change them.
 
-> **⚠️ Note**: changing the value of `hash` will only take effect after the `ucinewgame` command.
+| **Option**   | **Type** | **Description**                  | **Comments**                             |
+|--------------|----------|----------------------------------|------------------------------------------|
+| **`Hash`**   | `spin`   | Transposition table size (in MB) | Will only take effect after `ucinewgame` |
+| **`Ponder`** | `check`  | Enable pondering                 | Take effect after next `go` command      |
 
 ### 📝 Example
 
