@@ -217,7 +217,7 @@ pub const Engine = struct {
         }
 
         // Null move pruning.
-        if (self.options.null_move_pruning) {
+        if (self.options.null_move_pruning and !movegen.isCheck(&mutable_node.board)) {
             const r: u32 = if (node.depth > 6) 4 else 3;
             const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
             const child_result = self.PVS(child).inv();
