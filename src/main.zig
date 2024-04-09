@@ -17,10 +17,12 @@ pub fn main() !void {
     const t0 = std.time.milliTimestamp();
     const result = engine.search(board, depth, null);
     const dt = std.time.milliTimestamp() - t0;
+    const mate = result.checkmate();
 
     std.debug.print("bestmove:  {s}\n", .{io.stringify(result.best_move)});
     std.debug.print("score:     {d}cp\n", .{result.score});
     std.debug.print("depth:     {d}\n", .{result.depth});
     std.debug.print("time:      {d}ms\n", .{dt});
     std.debug.print("nodes:     {d}\n", .{engine.infos.nodes});
+    if (mate != null) std.debug.print("mate:      {d}\n", .{mate.?});
 }
