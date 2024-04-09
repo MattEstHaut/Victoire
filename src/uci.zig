@@ -171,9 +171,12 @@ pub const Engine = struct {
         const dt = std.time.milliTimestamp() - t0;
 
         var stringifier = io.MoveStringifier{};
+        const checkmate = result.checkmate();
 
-        stdout.print("info score cp {d} depth {d} time {d} nodes {d} pv {s}\n", .{
-            result.score,
+        stdout.print("info score ", .{}) catch unreachable;
+        if (checkmate == null) stdout.print("cp {d} ", .{result.score}) catch unreachable;
+        if (checkmate != null) stdout.print("mate {d} ", .{checkmate.?}) catch unreachable;
+        stdout.print("depth {d} time {d} nodes {d} pv {s}\n", .{
             result.depth,
             dt,
             self.data.engine.infos.nodes,
