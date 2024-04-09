@@ -82,6 +82,11 @@ const SearchResult = struct {
             .depth = self.depth,
         };
     }
+
+    pub inline fn checkmate(self: SearchResult) ?i64 {
+        if (@abs(self.score) < evaluation.checkmate - 200) return null;
+        return @divFloor(self.depth + 1, 2);
+    }
 };
 
 const MoveDataList = std.ArrayList(MoveData);
@@ -168,6 +173,8 @@ pub const Engine = struct {
             const ply_result = self.PVS(SearchNode.root(board, @intCast(ply)));
             if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) break;
             result = ply_result;
+
+            if (result.checkmate() != null and result.score > 0) break;
         }
 
         return result;
@@ -217,11 +224,11 @@ pub const Engine = struct {
         }
 
         // Null move pruning.
-        if (self.options.null_move_pruning) {
+        if (self.options.null_move_pruning and !movegen.isCheck(&mutable_node.board)) {
             const r: u32 = if (node.depth > 6) 4 else 3;
             const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
             const child_result = self.PVS(child).inv();
-            if (child_result.score >= mutable_node.beta) return SearchResult.raw(evaluation.checkmate / 2);
+            if (child_result.score >= mutable_node.beta) return SearchResult.raw(mutable_node.beta);
         }
 
         // Generates moves.
@@ -229,7 +236,7 @@ pub const Engine = struct {
 
         // Detects checkmate and stalemate.
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => SearchResult.raw(-@as(i64, evaluation.checkmate) + node.ply),
+            .checkmate => SearchResult.raw(-evaluation.checkmate + node.ply),
             .stalemate => SearchResult.raw(evaluation.stalemate),
         };
 
@@ -338,7 +345,7 @@ pub const Engine = struct {
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => -@as(i64, evaluation.checkmate) + node.ply,
+            .checkmate => -evaluation.checkmate + node.ply,
             .stalemate => evaluation.stalemate,
         };
 

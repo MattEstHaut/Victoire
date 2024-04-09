@@ -10,6 +10,7 @@ const EngineOptions = struct {
     depth: u32 = 10,
     time: ?i64 = null,
     table_size: u64 = 70,
+    ponder: bool = false,
 };
 
 const default_options = EngineOptions{};
@@ -21,6 +22,7 @@ pub const Engine = struct {
         board: chess.Board = chess.Board.empty(),
         engine: victoire.Engine = .{},
         search_thread: ?std.Thread = null,
+        ponder_thread: ?std.Thread = null,
         is_init: bool = false,
     } = .{},
 
@@ -47,6 +49,11 @@ pub const Engine = struct {
                         .{default_options.table_size},
                     );
 
+                    try stdout.print(
+                        "option name Ponder type check default {any}\n",
+                        .{default_options.ponder},
+                    );
+
                     try stdout.print("uciok\n", .{});
                     continue;
                 }
@@ -69,7 +76,7 @@ pub const Engine = struct {
                         self.data.board = try io.parsing.board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     } else if (std.mem.eql(u8, arg, "fen")) {
                         arg = args.rest();
-                        self.data.board = try io.parsing.board(arg);
+                        self.data.board = io.parsing.board(arg) catch continue;
                     } else continue;
 
                     while (args.next()) |a| if (std.mem.eql(u8, a, "moves")) break;
@@ -100,7 +107,7 @@ pub const Engine = struct {
                         _ = args.next();
                         arg = args.next() orelse "1";
                         const depth = try std.fmt.parseInt(u32, arg, 10);
-                        _ = try perft.perft(self.data.board, depth);
+                        _ = perft.perft(self.data.board, depth) catch continue;
                         continue;
                     }
 
@@ -137,6 +144,13 @@ pub const Engine = struct {
                         arg = args.next() orelse continue;
                         self.options.table_size = std.fmt.parseInt(u64, arg, 10) catch continue;
                     }
+
+                    if (std.mem.eql(u8, arg, "Ponder")) {
+                        arg = args.next() orelse continue;
+                        arg = args.next() orelse continue;
+                        if (std.mem.eql(u8, arg, "true")) self.options.ponder = true;
+                        if (std.mem.eql(u8, arg, "false")) self.options.ponder = false;
+                    }
                 }
             }
         }
@@ -145,7 +159,9 @@ pub const Engine = struct {
     fn stop(self: *Engine) void {
         self.data.engine.stop();
         if (self.data.search_thread != null) self.data.search_thread.?.join();
+        if (self.data.ponder_thread != null) self.data.ponder_thread.?.join();
         self.data.search_thread = null;
+        self.data.ponder_thread = null;
     }
 
     fn search(self: *Engine) void {
@@ -165,5 +181,14 @@ pub const Engine = struct {
         }) catch unreachable;
 
         stdout.print("bestmove {s}\n", .{stringifier.stringify(result.best_move)}) catch unreachable;
+
+        if (self.options.ponder) {
+            const child = self.data.board.copyAndMake(result.best_move);
+            self.data.ponder_thread = std.Thread.spawn(.{}, ponder, .{ self, child }) catch unreachable;
+        }
+    }
+
+    fn ponder(self: *Engine, board: chess.Board) void {
+        _ = self.data.engine.search(board, 100, null);
     }
 };
