@@ -517,6 +517,11 @@ pub inline fn append(list: *MoveList, move: chess.Move) void {
     list.append(move);
 }
 
+/// Returns if the king is attacked.
+pub inline fn isCheck(board: *chess.Board) bool {
+    return isAttacked(board.*, board.allies().king);
+}
+
 const EndType = enum {
     checkmate,
     stalemate,
@@ -524,6 +529,6 @@ const EndType = enum {
 
 /// Gives the end type. Does not check if the game is over.
 pub inline fn end(board: *chess.Board) EndType {
-    if (isAttacked(board.*, board.allies().king)) return .checkmate;
+    if (isCheck(board)) return .checkmate;
     return .stalemate;
 }
