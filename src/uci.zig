@@ -7,9 +7,9 @@ const victoire = @import("victoire.zig");
 const perft = @import("perft.zig");
 
 const EngineOptions = struct {
-    depth: u32 = 10,
+    depth: u32 = 50,
     time: ?i64 = null,
-    table_size: u64 = 70,
+    table_size: u64 = 64,
     ponder: bool = false,
 };
 
@@ -171,9 +171,12 @@ pub const Engine = struct {
         const dt = std.time.milliTimestamp() - t0;
 
         var stringifier = io.MoveStringifier{};
+        const checkmate = result.checkmate();
 
-        stdout.print("info score cp {d} depth {d} time {d} nodes {d} pv {s}\n", .{
-            result.score,
+        stdout.print("info score ", .{}) catch unreachable;
+        if (checkmate == null) stdout.print("cp {d} ", .{result.score}) catch unreachable;
+        if (checkmate != null) stdout.print("mate {d} ", .{checkmate.?}) catch unreachable;
+        stdout.print("depth {d} time {d} nodes {d} pv {s}\n", .{
             result.depth,
             dt,
             self.data.engine.infos.nodes,
