@@ -82,6 +82,11 @@ const SearchResult = struct {
             .depth = self.depth,
         };
     }
+
+    pub inline fn checkmate(self: SearchResult) ?i64 {
+        if (@abs(self.score) < evaluation.checkmate - 200) return null;
+        return @divFloor(self.depth + 1, 2);
+    }
 };
 
 const MoveDataList = std.ArrayList(MoveData);
