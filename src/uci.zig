@@ -7,9 +7,9 @@ const victoire = @import("victoire.zig");
 const perft = @import("perft.zig");
 
 const EngineOptions = struct {
-    depth: u32 = 10,
+    depth: u32 = 50,
     time: ?i64 = null,
-    table_size: u64 = 70,
+    table_size: u64 = 64,
     ponder: bool = false,
 };
 
