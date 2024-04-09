@@ -4,8 +4,8 @@ const chess = @import("chess.zig");
 const squares = @import("squares.zig");
 const tables = @import("pst.zig");
 
-pub const checkmate = 1_000_000;
-pub const stalemate = 0;
+pub const checkmate: i64 = 1_000_000;
+pub const stalemate: i64 = 0;
 
 inline fn value(piece: chess.Piece, spst: tables.SidePieceSquareTables, index: usize) i64 {
     return switch (piece) {

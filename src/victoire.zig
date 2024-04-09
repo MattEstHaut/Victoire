@@ -229,7 +229,7 @@ pub const Engine = struct {
 
         // Detects checkmate and stalemate.
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => SearchResult.raw(-@as(i64, evaluation.checkmate) + node.ply),
+            .checkmate => SearchResult.raw(evaluation.checkmate + node.ply),
             .stalemate => SearchResult.raw(evaluation.stalemate),
         };
 
