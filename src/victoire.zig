@@ -221,7 +221,7 @@ pub const Engine = struct {
             const r: u32 = if (node.depth > 6) 4 else 3;
             const child = mutable_node.next(chess.Move.nullMove()).reduce(r + 1).betaNullWindow();
             const child_result = self.PVS(child).inv();
-            if (child_result.score >= mutable_node.beta) return SearchResult.raw(evaluation.checkmate / 2);
+            if (child_result.score >= mutable_node.beta) return SearchResult.raw(mutable_node.beta);
         }
 
         // Generates moves.
@@ -229,7 +229,7 @@ pub const Engine = struct {
 
         // Detects checkmate and stalemate.
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => SearchResult.raw(evaluation.checkmate + node.ply),
+            .checkmate => SearchResult.raw(-evaluation.checkmate + node.ply),
             .stalemate => SearchResult.raw(evaluation.stalemate),
         };
 
@@ -338,7 +338,7 @@ pub const Engine = struct {
         const move_count = movegen.generate(node.board, &self.data.move_list, MoveData.appendMove);
 
         if (move_count == 0) return switch (movegen.end(&mutable_node.board)) {
-            .checkmate => -@as(i64, evaluation.checkmate) + node.ply,
+            .checkmate => -evaluation.checkmate + node.ply,
             .stalemate => evaluation.stalemate,
         };
 
