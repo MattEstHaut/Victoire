@@ -173,6 +173,8 @@ pub const Engine = struct {
             const ply_result = self.PVS(SearchNode.root(board, @intCast(ply)));
             if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) break;
             result = ply_result;
+
+            if (result.checkmate() != null and result.score > 0) break;
         }
 
         return result;
