@@ -121,6 +121,12 @@ const TranspositionData = struct {
     }
 };
 
+/// Calculate movetime based on time control.
+pub fn manageTime(time: i64, inc: i64, movestogo: ?i64) i64 {
+    const mtg = movestogo orelse 50;
+    return @divFloor(time, mtg) + inc - 10;
+}
+
 /// The Victory Chess Engine.
 pub const Engine = struct {
     options: struct {
