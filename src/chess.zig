@@ -141,7 +141,7 @@ pub const Board = struct {
     en_passant: u64 = 0,
 
     halfmove_clock: u8 = 0, // Not implemented
-    fullmove_number: u16 = 1, // Not implemented
+    fullmove_number: u16 = 1,
 
     pub inline fn empty() Board {
         var board = Board{};
@@ -167,6 +167,7 @@ pub const Board = struct {
     /// Makes a move, doesn't check legality.
     pub inline fn make(self: *Board, move: Move) void {
         self.en_passant = 0;
+        if (move.side == .black) self.fullmove_number += 1;
 
         if (!move.null_move) {
             blk: {
