@@ -43,10 +43,11 @@ The commands interpreted by the engine are listed below, more **UCI** protocol c
 
 Here is the list of currently available options. Use the command `setoption name <option name> value <value>` to change them.
 
-| **Option**   | **Type** | **Description**                  | **Comments**                             |
-|--------------|----------|----------------------------------|------------------------------------------|
-| **`Hash`**   | `spin`   | Transposition table size (in MB) | Will only take effect after `ucinewgame` |
-| **`Ponder`** | `check`  | Enable pondering                 | Take effect after next `go` command      |
+| **Option**        | **Type** | **Description**                  | **Comments**                             |
+|-------------------|----------|----------------------------------|------------------------------------------|
+| **`Hash`**        | `spin`   | Transposition table size (in MB) | Will only take effect after `ucinewgame` |
+| **`Ponder`**      | `check`  | Enable pondering                 | Take effect after next `go` command      |
+| **`TimeControl`** | `check`  | Enable time control              | Take effect after next `go` command      |
 
 ### 📝 Example
 
