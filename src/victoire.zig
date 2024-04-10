@@ -6,6 +6,9 @@ const movegen = @import("movegen.zig");
 const transposition = @import("transposition.zig");
 const evaluation = @import("evaluation.zig");
 
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
+
 const hasher = transposition.ZobristHasher.init();
 
 const SearchNode = struct {
@@ -150,7 +153,7 @@ pub const Engine = struct {
 
     pub fn init() Engine {
         var engine = Engine{};
-        engine.data.move_list = MoveDataList.init(std.heap.page_allocator);
+        engine.data.move_list = MoveDataList.init(allocator);
         engine.data.table = Table.init(engine.options.table_size, TranspositionData{}) catch unreachable;
         return engine;
     }
@@ -158,7 +161,7 @@ pub const Engine = struct {
     pub fn initWithSize(size: u64) Engine {
         var engine = Engine{};
         engine.options.table_size = size;
-        engine.data.move_list = MoveDataList.init(std.heap.page_allocator);
+        engine.data.move_list = MoveDataList.init(allocator);
         engine.data.table = Table.init(engine.options.table_size, TranspositionData{}) catch unreachable;
         return engine;
     }
