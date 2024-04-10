@@ -11,6 +11,7 @@ const EngineOptions = struct {
     time: ?i64 = null,
     table_size: u64 = 64,
     ponder: bool = false,
+    time_control: bool = true,
 };
 
 const default_options = EngineOptions{};
@@ -52,6 +53,11 @@ pub const Engine = struct {
                     try stdout.print(
                         "option name Ponder type check default {any}\n",
                         .{default_options.ponder},
+                    );
+
+                    try stdout.print(
+                        "option name TimeControl type check default {any}\n",
+                        .{default_options.time_control},
                     );
 
                     try stdout.print("uciok\n", .{});
@@ -111,6 +117,10 @@ pub const Engine = struct {
                         continue;
                     }
 
+                    var time: ?i64 = null;
+                    var movestogo: ?i64 = null;
+                    var inc: i64 = 0;
+
                     while (args.next()) |a| {
                         if (std.mem.eql(u8, a, "depth")) {
                             arg = args.next() orelse break;
@@ -121,6 +131,35 @@ pub const Engine = struct {
                             arg = args.next() orelse break;
                             self.options.time = try std.fmt.parseInt(i64, arg, 10);
                         }
+
+                        if (std.mem.eql(u8, a, "movestogo")) {
+                            arg = args.next() orelse break;
+                            movestogo = try std.fmt.parseInt(i64, arg, 10);
+                        }
+
+                        if (std.mem.eql(u8, a, "wtime")) {
+                            arg = args.next() orelse break;
+                            if (self.data.board.side == .white) time = try std.fmt.parseInt(i64, arg, 10);
+                        }
+
+                        if (std.mem.eql(u8, a, "btime")) {
+                            arg = args.next() orelse break;
+                            if (self.data.board.side == .black) time = try std.fmt.parseInt(i64, arg, 10);
+                        }
+
+                        if (std.mem.eql(u8, a, "winc")) {
+                            arg = args.next() orelse break;
+                            if (self.data.board.side == .white) inc = try std.fmt.parseInt(i64, arg, 10);
+                        }
+
+                        if (std.mem.eql(u8, a, "binc")) {
+                            arg = args.next() orelse break;
+                            if (self.data.board.side == .black) inc = try std.fmt.parseInt(i64, arg, 10);
+                        }
+                    }
+
+                    if (self.options.time_control and time != null) {
+                        self.options.time = victoire.manageTime(time.?, inc, movestogo);
                     }
 
                     self.stop();
@@ -150,6 +189,13 @@ pub const Engine = struct {
                         arg = args.next() orelse continue;
                         if (std.mem.eql(u8, arg, "true")) self.options.ponder = true;
                         if (std.mem.eql(u8, arg, "false")) self.options.ponder = false;
+                    }
+
+                    if (std.mem.eql(u8, arg, "TimeControl")) {
+                        arg = args.next() orelse continue;
+                        arg = args.next() orelse continue;
+                        if (std.mem.eql(u8, arg, "true")) self.options.time_control = true;
+                        if (std.mem.eql(u8, arg, "false")) self.options.time_control = false;
                     }
                 }
             }
