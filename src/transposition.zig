@@ -4,6 +4,9 @@ const chess = @import("chess.zig");
 const squares = @import("squares.zig");
 const std = @import("std");
 
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
+
 fn TranspositionRecord(comptime T: type) type {
     return struct {
         hash: u64 = 0,
@@ -20,7 +23,7 @@ pub fn TranspositionTable(comptime T: type) type {
 
         pub fn init(size: u64, default_value: T) !TranspositionTable(T) {
             var table = TranspositionTable(T){
-                .data = std.ArrayList(TranspositionRecord(T)).init(std.heap.page_allocator),
+                .data = std.ArrayList(TranspositionRecord(T)).init(allocator),
                 .size = size,
             };
             for (0..size) |_| try table.data.append(TranspositionRecord(T){ .data = default_value });

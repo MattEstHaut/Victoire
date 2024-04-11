@@ -6,6 +6,9 @@ const movegen = @import("movegen.zig");
 const transposition = @import("transposition.zig");
 const evaluation = @import("evaluation.zig");
 
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
+
 const hasher = transposition.ZobristHasher.init();
 
 const SearchNode = struct {
@@ -66,7 +69,7 @@ const SearchNode = struct {
     }
 };
 
-const SearchResult = struct {
+pub const SearchResult = struct {
     best_move: chess.Move = chess.Move.nullMove(),
     score: i64 = -evaluation.checkmate,
     depth: u32 = 0,
@@ -123,6 +126,7 @@ const TranspositionData = struct {
 
 /// Calculate movetime based on time control.
 pub fn manageTime(time: i64, inc: i64, movestogo: ?i64) i64 {
+    if (inc > time) return time;
     const mtg = movestogo orelse 50;
     return @divFloor(time, mtg) + inc;
 }
@@ -149,7 +153,7 @@ pub const Engine = struct {
 
     pub fn init() Engine {
         var engine = Engine{};
-        engine.data.move_list = MoveDataList.init(std.heap.page_allocator);
+        engine.data.move_list = MoveDataList.init(allocator);
         engine.data.table = Table.init(engine.options.table_size, TranspositionData{}) catch unreachable;
         return engine;
     }
@@ -157,7 +161,7 @@ pub const Engine = struct {
     pub fn initWithSize(size: u64) Engine {
         var engine = Engine{};
         engine.options.table_size = size;
-        engine.data.move_list = MoveDataList.init(std.heap.page_allocator);
+        engine.data.move_list = MoveDataList.init(allocator);
         engine.data.table = Table.init(engine.options.table_size, TranspositionData{}) catch unreachable;
         return engine;
     }
@@ -185,6 +189,19 @@ pub const Engine = struct {
         }
 
         return result;
+    }
+
+    pub fn explore(self: *Engine, board: chess.Board, context: anytype, explorer: fn (@TypeOf(context), SearchResult) callconv(.Inline) bool) void {
+        self.data.aborted = false;
+        self.data.deadline = null;
+        self.infos.nodes = 0;
+
+        for (1..100) |ply| {
+            const ply_result = self.PVS(SearchNode.root(board, @intCast(ply)));
+            if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) break;
+            if (explorer(context, ply_result)) break;
+            if (ply_result.checkmate() != null and ply_result.score > 0) break;
+        }
     }
 
     fn shouldAbort(self: *Engine) bool {
@@ -293,19 +310,21 @@ pub const Engine = struct {
                     }
                 };
 
-                const result = res: {
-                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
-                    if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                        break :res self.PVS(child.reduce(lmr)).inv();
-                    break :res result;
+                const reduced_result = red: {
+                    if (lmr == 0) break :red SearchResult.raw(mutable_node.alpha + 1);
+                    break :red self.PVS(child.reduce(lmr).nullWindow()).inv();
                 };
 
-                // Re-search at full depth
-                if (lmr > 0 and result.score > mutable_node.alpha) {
-                    const full_result = self.PVS(child.nullWindow()).inv();
-                    if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
-                        break :blk self.PVS(child).inv();
-                }
+                const result = res: {
+                    if (reduced_result.score <= mutable_node.alpha) break :res reduced_result;
+
+                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
+                    if (result.score > mutable_node.alpha) {
+                        if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
+                            break :res self.PVS(child.reduce(lmr)).inv();
+                    }
+                    break :res result;
+                };
 
                 break :blk result;
             };
