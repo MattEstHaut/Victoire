@@ -307,7 +307,7 @@ pub const Engine = struct {
                     if (node.depth < 4) break :reduc 0;
 
                     const last_depth = node.ply + node.depth - 1;
-                    if (last_depth < 8) {
+                    if (last_depth < 4) {
                         if (i < 5) break :reduc 0;
                         break :reduc 1;
                     } else {
