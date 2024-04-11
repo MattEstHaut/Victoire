@@ -67,6 +67,11 @@ const SearchNode = struct {
         result.depth -= @min(result.depth, plies);
         return result;
     }
+
+    pub inline fn evaluate(self: SearchNode) i64 {
+        var mutable_node = self;
+        return self.eval.evaluate(&mutable_node.board);
+    }
 };
 
 pub const SearchResult = struct {
@@ -280,7 +285,7 @@ pub const Engine = struct {
             if (record != null and record.?.flag == .exact) {
                 const sr = record.?.search_result;
                 move_data.score = sr.score + sr.depth * 10;
-            } else move_data.score = -node.eval.next(move_data.move).evaluate();
+            } else move_data.score = -mutable_node.next(move_data.move).evaluate();
         }
 
         // Orders moves.
@@ -361,7 +366,7 @@ pub const Engine = struct {
         if (self.shouldAbort()) return 0;
         self.infos.nodes += 1;
 
-        const pat = node.eval.evaluate();
+        const pat = node.evaluate();
         if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;
