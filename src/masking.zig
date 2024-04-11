@@ -15,13 +15,7 @@ pub const BitIterator = struct {
     /// Extract the lowest bit if there is one remaining.
     pub inline fn next(self: *BitIterator) ?u64 {
         if (self.mask == 0) return null;
-
-        const lowest_bit = asm (
-            \\ blsi %[mask], %[lowest_bit]
-            : [lowest_bit] "=r" (-> u64),
-            : [mask] "r" (self.mask),
-        );
-
+        const lowest_bit: u64 = @as(u64, 1) << @intCast(@ctz(self.mask));
         self.mask -= lowest_bit;
         return lowest_bit;
     }
