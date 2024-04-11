@@ -147,7 +147,6 @@ pub const Engine = struct {
 
     data: struct {
         move_list: MoveDataList = undefined,
-        deadline: ?i64 = null,
         aborted: bool = false,
         table: Table = undefined,
     } = .{},
@@ -176,12 +175,9 @@ pub const Engine = struct {
         self.data.table.deinit();
     }
 
-    pub fn search(self: *Engine, board: chess.Board, depth: u32, time: ?i64) SearchResult {
+    pub fn search(self: *Engine, board: chess.Board, depth: u32) SearchResult {
         self.data.aborted = false;
-        self.data.deadline = time;
         self.infos.nodes = 0;
-
-        if (time != null) self.data.deadline.? += std.time.milliTimestamp();
 
         var result = SearchResult.raw(0);
 
@@ -198,7 +194,6 @@ pub const Engine = struct {
 
     pub fn explore(self: *Engine, board: chess.Board, context: anytype, explorer: fn (@TypeOf(context), SearchResult) bool) void {
         self.data.aborted = false;
-        self.data.deadline = null;
         self.infos.nodes = 0;
 
         for (1..100) |ply| {
@@ -210,16 +205,7 @@ pub const Engine = struct {
     }
 
     fn shouldAbort(self: *Engine) bool {
-        if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) return true;
-
-        if (self.data.deadline != null) {
-            if (self.data.deadline.? <= std.time.milliTimestamp()) {
-                @atomicStore(bool, &self.data.aborted, true, .seq_cst);
-                return true;
-            }
-        }
-
-        return false;
+        return @atomicLoad(bool, &self.data.aborted, .seq_cst);
     }
 
     pub fn stop(self: *Engine) void {
