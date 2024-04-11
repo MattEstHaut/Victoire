@@ -82,6 +82,24 @@ export fn destroyEngine(engine: *victoire.Engine) void {
     allocator.destroy(engine);
 }
 
+export fn search(engine: *victoire.Engine, board: *chess.Board, depth: i32) ?*victoire.SearchResult {
+    const result = allocator.create(victoire.SearchResult) catch return null;
+    result.* = engine.search(board.*, @intCast(depth));
+    return result;
+}
+
+export fn destroySearchResult(result: *victoire.SearchResult) void {
+    allocator.destroy(result);
+}
+
+export fn getBestMove(result: *victoire.SearchResult) i32 {
+    return encode(.{
+        .src = result.best_move.src,
+        .dest = result.best_move.dest,
+        .promotion = result.best_move.promotion,
+    });
+}
+
 fn encode(move: chess.Move) Move {
     var encoded_move: Move = if (move.promotion) |promotion| switch (promotion) {
         .knight => 1,
