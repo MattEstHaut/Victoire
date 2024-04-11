@@ -196,7 +196,7 @@ pub const Engine = struct {
         return result;
     }
 
-    pub fn explore(self: *Engine, board: chess.Board, context: anytype, explorer: fn (@TypeOf(context), SearchResult) callconv(.Inline) bool) void {
+    pub fn explore(self: *Engine, board: chess.Board, context: anytype, explorer: fn (@TypeOf(context), SearchResult) bool) void {
         self.data.aborted = false;
         self.data.deadline = null;
         self.infos.nodes = 0;
