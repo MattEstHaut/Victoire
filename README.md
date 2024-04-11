@@ -34,10 +34,13 @@ The commands interpreted by the engine are listed below, more **UCI** protocol c
 | **`ucinewgame`** | Initialize a new game | Reset transposition table                         |
 | **`isready`**    |                       |                                                   |
 | **`position`**   | Set the position      | Support `fen`, `startpos` and `moves`             |
-| **`go`**         | Start the search      | Support `movetime` (in ms) and `depth` (in plies) |
+| **`go`**         | Start the search      | See below for available options                   |
+| **`go perft`**   | Start the perft test  | Usage: `go perft <depth>`                         |
 | **`stop`**       | Stop the search       | Stop ponder thread                                |
 | **`setoption`**  | Set an option         |                                                   |
 | **`quit`**       | Quit the engine       | Can be used at any time                           |
+
+**`go`** comand supports `movetime` (in ms), `depth` (in plies), `infinite`, `wtime`, `btime`, `winc`, `binc` and `movestogo`.
 
 ### ⚙️ Available options
 
