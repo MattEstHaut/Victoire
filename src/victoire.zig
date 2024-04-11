@@ -310,19 +310,28 @@ pub const Engine = struct {
                     }
                 };
 
+                const reduced_result = red: {
+                    if (lmr == 0) break :red SearchResult.raw(mutable_node.alpha + 1);
+                    break :red self.PVS(child.reduce(lmr).nullWindow()).inv();
+                };
+
                 const result = res: {
+                    if (reduced_result.score <= mutable_node.alpha) break :res reduced_result;
+
                     const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
-                    if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                        break :res self.PVS(child.reduce(lmr)).inv();
+                    if (result.score > mutable_node.alpha) {
+                        if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
+                            break :res self.PVS(child.reduce(lmr)).inv();
+                    }
                     break :res result;
                 };
 
                 // Re-search at full depth
-                if (lmr > 0 and result.score > mutable_node.alpha) {
-                    const full_result = self.PVS(child.nullWindow()).inv();
-                    if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
-                        break :blk self.PVS(child).inv();
-                }
+                // if (lmr > 0 and result.score > mutable_node.alpha) {
+                //     const full_result = self.PVS(child.nullWindow()).inv();
+                //     if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
+                //         break :blk self.PVS(child).inv();
+                // }
 
                 break :blk result;
             };
