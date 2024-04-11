@@ -67,6 +67,11 @@ const SearchNode = struct {
         result.depth -= @min(result.depth, plies);
         return result;
     }
+
+    pub inline fn evaluate(self: SearchNode) i64 {
+        var mutable_node = self;
+        return self.eval.evaluate(&mutable_node.board);
+    }
 };
 
 pub const SearchResult = struct {
@@ -235,16 +240,17 @@ pub const Engine = struct {
         // Checks transposition table.
         if (node.depth > 1) transpo: {
             const record = self.data.table.get(node.hash) orelse break :transpo;
-            record_depth = record.data.search_result.depth;
+
+            record_depth = record.search_result.depth;
             if (record_depth >= node.depth) {
-                switch (record.data.flag) {
-                    .exact => return record.data.search_result,
-                    .lower => mutable_node.alpha = @max(node.alpha, record.data.search_result.score),
-                    .upper => mutable_node.beta = @min(node.beta, record.data.search_result.score),
+                switch (record.flag) {
+                    .exact => return record.search_result,
+                    .lower => mutable_node.alpha = @max(node.alpha, record.search_result.score),
+                    .upper => mutable_node.beta = @min(node.beta, record.search_result.score),
                 }
-                if (mutable_node.alpha >= mutable_node.beta) return record.data.search_result;
+                if (mutable_node.alpha >= mutable_node.beta) return record.search_result;
             }
-            pv = record.data.search_result.best_move;
+            pv = record.search_result.best_move;
         }
 
         // Null move pruning.
@@ -275,10 +281,11 @@ pub const Engine = struct {
 
             const hash = hasher.update(node.hash, move_data.move);
             const record = self.data.table.get(hash);
-            if (record != null and record.?.data.flag == .exact) {
-                const sr = record.?.data.search_result;
+
+            if (record != null and record.?.flag == .exact) {
+                const sr = record.?.search_result;
                 move_data.score = sr.score + sr.depth * 10;
-            } else move_data.score = -node.eval.next(move_data.move).evaluate();
+            } else move_data.score = -mutable_node.next(move_data.move).evaluate();
         }
 
         // Orders moves.
@@ -318,10 +325,10 @@ pub const Engine = struct {
                 const result = res: {
                     if (reduced_result.score <= mutable_node.alpha) break :res reduced_result;
 
-                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
+                    const result = self.PVS(child.nullWindow()).inv();
                     if (result.score > mutable_node.alpha) {
                         if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                            break :res self.PVS(child.reduce(lmr)).inv();
+                            break :res self.PVS(child).inv();
                     }
                     break :res result;
                 };
@@ -359,7 +366,7 @@ pub const Engine = struct {
         if (self.shouldAbort()) return 0;
         self.infos.nodes += 1;
 
-        const pat = node.eval.evaluate();
+        const pat = node.evaluate();
         if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;
