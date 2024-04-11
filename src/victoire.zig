@@ -342,16 +342,16 @@ pub const Engine = struct {
         }
 
         search_result.score = mutable_node.alpha;
+        search_result.depth += 1;
 
         // Saves search result in transposition table.
-        if (node.depth >= record_depth) {
+        if (node.depth > 1 and node.depth >= record_depth) {
             var record = TranspositionData.init(search_result);
             if (search_result.score <= node.alpha) record.flag = .upper;
             if (search_result.score >= mutable_node.beta) record.flag = .lower;
             self.data.table.set(node.hash, record);
         }
 
-        search_result.depth += 1;
         return search_result;
     }
 
