@@ -73,7 +73,7 @@ export fn make(board: *chess.Board, move: Move) ?*chess.Board {
 
 export fn createEngine(size: usize) ?*victoire.Engine {
     const engine = allocator.create(victoire.Engine) catch return null;
-    engine.* = victoire.Engine.initWithSize(@intCast(size));
+    engine.* = victoire.Engine.initWithSize(size);
     return engine;
 }
 
