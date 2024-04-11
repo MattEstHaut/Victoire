@@ -532,3 +532,23 @@ pub inline fn end(board: *chess.Board) EndType {
     if (isCheck(board)) return .checkmate;
     return .stalemate;
 }
+
+pub inline fn space(board: *chess.Board) u64 {
+    const positions = board.allies();
+    const blockers = positions.occupied | board.enemies().occupied;
+    var iter: masking.BitIterator = undefined;
+    var mask: u64 = 0;
+
+    mask |= lookup.pawnCaptures(positions.pawns, board.side);
+    mask |= lookup.knight(positions.knights);
+
+    iter = masking.BitIterator.init(positions.bishops);
+    while (iter.next()) |bishop| mask |= lookup.bishop(bishop, blockers);
+    iter = masking.BitIterator.init(positions.rooks);
+    while (iter.next()) |rook| mask |= lookup.rook(rook, blockers);
+    iter = masking.BitIterator.init(positions.queens);
+    while (iter.next()) |queen| mask |= lookup.queen(queen, blockers);
+
+    mask |= lookup.king(positions.king);
+    return mask & ~positions.occupied;
+}
