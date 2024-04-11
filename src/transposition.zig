@@ -36,7 +36,7 @@ pub fn TranspositionTable(comptime T: type) type {
 
         /// Gets the record if the hash has been found.
         pub inline fn get(self: *const TranspositionTable(T), hash: u64) ?T {
-            const index = hash % self.size;
+            const index: usize = @intCast(hash % self.size);
             self.data.items[index].mutex.lock();
             defer self.data.items[index].mutex.unlock();
             const record = self.data.items[index];
@@ -46,7 +46,7 @@ pub fn TranspositionTable(comptime T: type) type {
 
         /// Overwrite the record if there is already one.
         pub inline fn set(self: *TranspositionTable(T), hash: u64, data: T) void {
-            const index = hash % self.size;
+            const index: usize = @intCast(hash % self.size);
             self.data.items[index].mutex.lock();
             defer self.data.items[index].mutex.unlock();
             self.data.items[index].hash = hash;
@@ -55,7 +55,7 @@ pub fn TranspositionTable(comptime T: type) type {
     };
 }
 
-fn m2u64(mask: u64) u64 {
+fn m2u64(mask: u64) usize {
     return @intCast(@ctz(mask));
 }
 
