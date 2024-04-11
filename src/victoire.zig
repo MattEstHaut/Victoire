@@ -69,7 +69,7 @@ const SearchNode = struct {
     }
 };
 
-const SearchResult = struct {
+pub const SearchResult = struct {
     best_move: chess.Move = chess.Move.nullMove(),
     score: i64 = -evaluation.checkmate,
     depth: u32 = 0,
@@ -189,6 +189,19 @@ pub const Engine = struct {
         }
 
         return result;
+    }
+
+    pub fn explore(self: *Engine, board: chess.Board, context: anytype, explorer: fn (@TypeOf(context), SearchResult) callconv(.Inline) bool) void {
+        self.data.aborted = false;
+        self.data.deadline = null;
+        self.infos.nodes = 0;
+
+        for (1..100) |ply| {
+            const ply_result = self.PVS(SearchNode.root(board, @intCast(ply)));
+            if (@atomicLoad(bool, &self.data.aborted, .seq_cst)) break;
+            if (explorer(context, ply_result)) break;
+            if (ply_result.checkmate() != null and ply_result.score > 0) break;
+        }
     }
 
     fn shouldAbort(self: *Engine) bool {
