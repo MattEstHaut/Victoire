@@ -143,8 +143,8 @@ pub const Evaluator = struct {
         score = mul(self.side) * @divTrunc(score, 256);
 
         var child = board.copyAndMake(chess.Move.nullMove());
-        score += 10 * @as(i64, @popCount(movegen.space(board)));
-        score -= 10 * @as(i64, @popCount(movegen.space(&child)));
+        score += 5 * @as(i64, @popCount(movegen.space(board)));
+        score -= 5 * @as(i64, @popCount(movegen.space(&child)));
 
         return score;
     }
