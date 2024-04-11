@@ -103,6 +103,7 @@ pub const Engine = struct {
 
                 if (std.mem.eql(u8, arg, "go")) {
                     if (!self.data.is_init) continue;
+                    self.stop();
 
                     arg = args.peek() orelse {
                         self.search();
@@ -114,6 +115,20 @@ pub const Engine = struct {
                         arg = args.next() orelse "1";
                         const depth = try std.fmt.parseInt(u32, arg, 10);
                         _ = perft.perft(self.data.board, depth) catch continue;
+                        continue;
+                    }
+
+                    if (std.mem.eql(u8, arg, "infinite")) {
+                        self.data.search_thread = try std.Thread.spawn(
+                            .{},
+                            victoire.Engine.explore,
+                            .{
+                                &self.data.engine,
+                                self.data.board,
+                                ExplorerContext.init(&self.data.engine.infos.nodes),
+                                explorer,
+                            },
+                        );
                         continue;
                     }
 
@@ -162,9 +177,7 @@ pub const Engine = struct {
                         self.options.time = victoire.manageTime(time.?, inc, movestogo);
                     }
 
-                    self.stop();
                     self.data.search_thread = try std.Thread.spawn(.{}, search, .{self});
-
                     continue;
                 }
 
@@ -241,3 +254,35 @@ pub const Engine = struct {
         _ = self.data.engine.search(board, 100, null);
     }
 };
+
+const ExplorerContext = struct {
+    t0: i64,
+    nodes: *u64,
+
+    pub fn init(nodes: *u64) ExplorerContext {
+        return .{
+            .t0 = std.time.milliTimestamp(),
+            .nodes = nodes,
+        };
+    }
+};
+
+fn explorer(context: ExplorerContext, result: victoire.SearchResult) bool {
+    const stdout = std.io.getStdOut().writer();
+    const dt = std.time.milliTimestamp() - context.t0;
+    const checkmate = result.checkmate();
+    var stringifier = io.MoveStringifier{};
+
+    stdout.print("info score ", .{}) catch unreachable;
+    if (checkmate == null) stdout.print("cp {d} ", .{result.score}) catch unreachable;
+    if (checkmate != null) stdout.print("mate {d} ", .{checkmate.?}) catch unreachable;
+
+    stdout.print("depth {d} time {d} nodes {d} pv {s}\n", .{
+        result.depth,
+        dt,
+        context.nodes.*,
+        stringifier.stringify(result.best_move),
+    }) catch unreachable;
+
+    return false;
+}

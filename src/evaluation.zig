@@ -3,6 +3,7 @@
 const chess = @import("chess.zig");
 const squares = @import("squares.zig");
 const tables = @import("pst.zig");
+const movegen = @import("movegen.zig");
 
 pub const checkmate: i64 = 1_000_000;
 pub const stalemate: i64 = 0;
@@ -137,8 +138,14 @@ pub const Evaluator = struct {
         return result;
     }
 
-    pub inline fn evaluate(self: Evaluator) i64 {
-        const m = mul(self.side);
-        return m * @divTrunc(self.opening_score * (256 - self.phase) + self.endgame_score * self.phase, 256);
+    pub inline fn evaluate(self: Evaluator, board: *chess.Board) i64 {
+        var score: i64 = self.opening_score * (256 - self.phase) + self.endgame_score * self.phase;
+        score = mul(self.side) * @divTrunc(score, 256);
+
+        var child = board.copyAndMake(chess.Move.nullMove());
+        score += 5 * @as(i64, @popCount(movegen.space(board)));
+        score -= 5 * @as(i64, @popCount(movegen.space(&child)));
+
+        return score;
     }
 };
