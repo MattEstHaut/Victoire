@@ -1,3 +1,3 @@
-# Victoire
+# Victoire-WASM
 
-Victoire est un moteur d'échecs développé en [Zig](https://ziglang.org/).
+Victoire-WASM is the [WebAssembly](https://webassembly.org/) version of [Victoire](https://github.com/MattEstHaut/Victoire), a chess engine written in [Zig](https://ziglang.org/).
