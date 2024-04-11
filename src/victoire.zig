@@ -140,7 +140,7 @@ pub fn manageTime(time: i64, inc: i64, movestogo: ?i64) i64 {
 pub const Engine = struct {
     options: struct {
         quiesce_depth: u32 = 12,
-        table_size: u64 = 1_000_000,
+        table_size: usize = 1_000_000,
         late_move_reduction: bool = true,
         null_move_pruning: bool = true,
     } = .{},
@@ -163,7 +163,7 @@ pub const Engine = struct {
         return engine;
     }
 
-    pub fn initWithSize(size: u64) Engine {
+    pub fn initWithSize(size: usize) Engine {
         var engine = Engine{};
         engine.options.table_size = size;
         engine.data.move_list = MoveDataList.init(allocator);
