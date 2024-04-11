@@ -326,13 +326,6 @@ pub const Engine = struct {
                     break :res result;
                 };
 
-                // Re-search at full depth
-                // if (lmr > 0 and result.score > mutable_node.alpha) {
-                //     const full_result = self.PVS(child.nullWindow()).inv();
-                //     if (mutable_node.alpha < full_result.score and full_result.score < mutable_node.beta)
-                //         break :blk self.PVS(child).inv();
-                // }
-
                 break :blk result;
             };
 
