@@ -35,12 +35,12 @@ pub fn TranspositionTable(comptime T: type) type {
         }
 
         /// Gets the record if the hash has been found.
-        pub inline fn get(self: *const TranspositionTable(T), hash: u64) ?TranspositionRecord(T) {
+        pub inline fn get(self: *const TranspositionTable(T), hash: u64) ?T {
             const index = hash % self.size;
             self.data.items[index].mutex.lock();
             defer self.data.items[index].mutex.unlock();
             const record = self.data.items[index];
-            if (record.hash == hash) return record;
+            if (record.hash == hash) return record.data;
             return null;
         }
 

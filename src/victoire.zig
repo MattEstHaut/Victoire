@@ -235,16 +235,17 @@ pub const Engine = struct {
         // Checks transposition table.
         if (node.depth > 1) transpo: {
             const record = self.data.table.get(node.hash) orelse break :transpo;
-            record_depth = record.data.search_result.depth;
+
+            record_depth = record.search_result.depth;
             if (record_depth >= node.depth) {
-                switch (record.data.flag) {
-                    .exact => return record.data.search_result,
-                    .lower => mutable_node.alpha = @max(node.alpha, record.data.search_result.score),
-                    .upper => mutable_node.beta = @min(node.beta, record.data.search_result.score),
+                switch (record.flag) {
+                    .exact => return record.search_result,
+                    .lower => mutable_node.alpha = @max(node.alpha, record.search_result.score),
+                    .upper => mutable_node.beta = @min(node.beta, record.search_result.score),
                 }
-                if (mutable_node.alpha >= mutable_node.beta) return record.data.search_result;
+                if (mutable_node.alpha >= mutable_node.beta) return record.search_result;
             }
-            pv = record.data.search_result.best_move;
+            pv = record.search_result.best_move;
         }
 
         // Null move pruning.
@@ -275,8 +276,9 @@ pub const Engine = struct {
 
             const hash = hasher.update(node.hash, move_data.move);
             const record = self.data.table.get(hash);
-            if (record != null and record.?.data.flag == .exact) {
-                const sr = record.?.data.search_result;
+
+            if (record != null and record.?.flag == .exact) {
+                const sr = record.?.search_result;
                 move_data.score = sr.score + sr.depth * 10;
             } else move_data.score = -node.eval.next(move_data.move).evaluate();
         }
