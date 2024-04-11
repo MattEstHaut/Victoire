@@ -318,10 +318,10 @@ pub const Engine = struct {
                 const result = res: {
                     if (reduced_result.score <= mutable_node.alpha) break :res reduced_result;
 
-                    const result = self.PVS(child.reduce(lmr).nullWindow()).inv();
+                    const result = self.PVS(child.nullWindow()).inv();
                     if (result.score > mutable_node.alpha) {
                         if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
-                            break :res self.PVS(child.reduce(lmr)).inv();
+                            break :res self.PVS(child).inv();
                     }
                     break :res result;
                 };
