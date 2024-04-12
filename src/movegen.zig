@@ -552,3 +552,182 @@ pub inline fn space(board: *chess.Board) u64 {
     mask |= lookup.king(positions.king);
     return mask & ~positions.occupied;
 }
+
+const CountResult = struct {
+    mobility: u32 = 0,
+    space: u64 = 0,
+};
+
+/// Counts legal moves.
+pub inline fn count(board: chess.Board) CountResult {
+    var result = CountResult{};
+    var mutable_board = board;
+
+    const occupied = board.white.occupied | board.black.occupied;
+    const positions = mutable_board.allies().*;
+    const empty_or_enemy = (~occupied | mutable_board.enemies().occupied) & ~mutable_board.enemies().king;
+    const pin_and_check = PinCheck.init(board);
+
+    const prom_row = switch (board.side) {
+        .white => squares.row_8,
+        .black => squares.row_1,
+    };
+
+    {
+        const atks = lookup.king(positions.king) & empty_or_enemy;
+        var dest_iter = masking.BitIterator.init(atks);
+        while (dest_iter.next()) |dest| {
+            if (!isAttacked(board, dest)) {
+                result.mobility += 1;
+                result.space |= dest;
+            }
+        }
+    }
+
+    if (pin_and_check.checks > 1) return result;
+
+    const pin_hv = pin_and_check.pin_hor | pin_and_check.pin_ver;
+    const pin_ad = pin_and_check.pin_asc | pin_and_check.pin_desc;
+
+    {
+        var src_iter = masking.BitIterator.init(positions.knights & ~(pin_hv | pin_ad));
+        while (src_iter.next()) |src| {
+            const atks = lookup.knight(src) & empty_or_enemy & pin_and_check.check;
+            result.mobility += @popCount(atks);
+            result.space |= atks;
+        }
+    }
+
+    {
+        var src_iter = masking.BitIterator.init(positions.bishops & ~pin_hv);
+        while (src_iter.next()) |src| {
+            var pin = masking.full;
+            if (pin_and_check.pin_asc & src > 0) {
+                pin = pin_and_check.pin_asc;
+            } else if (pin_and_check.pin_desc & src > 0) {
+                pin = pin_and_check.pin_desc;
+            }
+
+            const atks = lookup.bishop(src, occupied) & empty_or_enemy & pin_and_check.check & pin;
+            result.mobility += @popCount(atks);
+            result.space |= atks;
+        }
+    }
+
+    {
+        var src_iter = masking.BitIterator.init(positions.rooks & ~pin_ad);
+        while (src_iter.next()) |src| {
+            var pin = masking.full;
+            if (pin_and_check.pin_hor & src > 0) {
+                pin = pin_and_check.pin_hor;
+            } else if (pin_and_check.pin_ver & src > 0) {
+                pin = pin_and_check.pin_ver;
+            }
+
+            const atks = lookup.rook(src, occupied) & empty_or_enemy & pin_and_check.check & pin;
+            result.mobility += @popCount(atks);
+            result.space |= atks;
+        }
+    }
+
+    {
+        var src_iter = masking.BitIterator.init(positions.queens);
+        while (src_iter.next()) |src| {
+            var pin = masking.full;
+            if (pin_and_check.pin_asc & src > 0) {
+                pin = pin_and_check.pin_asc;
+            } else if (pin_and_check.pin_desc & src > 0) {
+                pin = pin_and_check.pin_desc;
+            } else if (pin_and_check.pin_hor & src > 0) {
+                pin = pin_and_check.pin_hor;
+            } else if (pin_and_check.pin_ver & src > 0) {
+                pin = pin_and_check.pin_ver;
+            }
+
+            const atks = lookup.queen(src, occupied) & empty_or_enemy & pin_and_check.check & pin;
+            result.mobility += @popCount(atks);
+            result.space |= atks;
+        }
+    }
+
+    {
+        var src_iter = masking.BitIterator.init(positions.pawns & ~(pin_ad | pin_and_check.pin_hor));
+        while (src_iter.next()) |src| {
+            const dest = lookup.pawnsForward(src, occupied, board.side) & pin_and_check.check;
+            if (dest == 0) continue;
+            if (dest & prom_row > 0) result.mobility += 3;
+            result.mobility += 1;
+            result.space |= dest;
+        }
+    }
+
+    {
+        var src_iter = masking.BitIterator.init(positions.pawns & ~(pin_ad | pin_and_check.pin_hor));
+        while (src_iter.next()) |src| {
+            const dest = lookup.pawnsDoubleForward(src, occupied, board.side) & pin_and_check.check;
+            if (dest == 0) continue;
+            result.mobility += 1;
+            result.space |= dest;
+        }
+    }
+
+    {
+        var src_iter = masking.BitIterator.init(positions.pawns & ~pin_hv);
+        while (src_iter.next()) |src| {
+            var pin = masking.full;
+            if (pin_and_check.pin_asc & src > 0) {
+                pin = pin_and_check.pin_asc;
+            } else if (pin_and_check.pin_desc & src > 0) {
+                pin = pin_and_check.pin_desc;
+            }
+
+            const atks_mask = pin_and_check.check & pin & mutable_board.enemies().occupied & ~mutable_board.enemies().king;
+            const atks = lookup.pawnCaptures(src, board.side) & atks_mask;
+            result.space |= atks;
+            var dest_iter = masking.BitIterator.init(atks);
+            while (dest_iter.next()) |dest| {
+                if (dest & prom_row > 0) result.mobility += 3;
+                result.mobility += 1;
+            }
+        }
+    }
+
+    {
+        var move = chess.Move{
+            .piece = .pawn,
+            .dest = board.en_passant,
+            .capture = .pawn,
+            .en_passant = true,
+            .side = board.side,
+            .is_check_evasion = pin_and_check.checks > 0,
+        };
+
+        const en_passant_check = lookup.pawnsForward(pin_and_check.check, 0, board.side) & move.dest | pin_and_check.check;
+        const mask = lookup.pawnCaptures(move.dest & en_passant_check, board.side.other());
+        var src_iter = masking.BitIterator.init(positions.pawns & ~pin_hv & mask);
+        while (src_iter.next()) |src| {
+            move.src = src;
+            var board_test = board.copyAndMake(move);
+            board_test.side = move.side;
+            if (!isAttacked(board_test, positions.king)) {
+                result.mobility += 1;
+                result.space |= move.dest;
+            }
+        }
+    }
+
+    {
+        switch (board.side) {
+            .white => {
+                if (castling_right.K(board)) result.mobility += 1;
+                if (castling_right.Q(board)) result.mobility += 1;
+            },
+            .black => {
+                if (castling_right.k(board)) result.mobility += 1;
+                if (castling_right.q(board)) result.mobility += 1;
+            },
+        }
+    }
+
+    return result;
+}

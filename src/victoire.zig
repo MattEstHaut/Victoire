@@ -68,9 +68,13 @@ const SearchNode = struct {
         return result;
     }
 
-    pub inline fn evaluate(self: SearchNode) i64 {
+    pub inline fn evaluate(self: *SearchNode) i64 {
         var mutable_node = self;
         return self.eval.evaluate(&mutable_node.board);
+    }
+
+    pub inline fn look(self: *SearchNode) i64 {
+        return self.eval.look();
     }
 };
 
@@ -104,6 +108,7 @@ const MoveData = struct {
     move: chess.Move = chess.Move.nullMove(),
     score: i64 = -evaluation.checkmate,
     is_pv: bool = false,
+    node_type: enum { pv, cut, all } = .all,
 
     pub inline fn appendMove(list: *MoveDataList, move: chess.Move) void {
         list.append(.{
@@ -140,7 +145,7 @@ pub fn manageTime(time: i64, inc: i64, movestogo: ?i64) i64 {
 pub const Engine = struct {
     options: struct {
         quiesce_depth: u32 = 12,
-        table_size: u64 = 1_000_000,
+        table_size: usize = 1_000_000,
         late_move_reduction: bool = true,
         null_move_pruning: bool = true,
     } = .{},
@@ -163,7 +168,7 @@ pub const Engine = struct {
         return engine;
     }
 
-    pub fn initWithSize(size: u64) Engine {
+    pub fn initWithSize(size: usize) Engine {
         var engine = Engine{};
         engine.options.table_size = size;
         engine.data.move_list = MoveDataList.init(allocator);
@@ -282,16 +287,21 @@ pub const Engine = struct {
             const hash = hasher.update(node.hash, move_data.move);
             const record = self.data.table.get(hash);
 
-            if (record != null and record.?.flag == .exact) {
-                const sr = record.?.search_result;
-                move_data.score = sr.score + sr.depth * 10 + 1500;
-            } else if (record != null and record.?.flag == .upper) {
-                const sr = record.?.search_result;
-                move_data.score = sr.score - 500 - sr.depth * 50;
-            } else if (record != null and record.?.flag == .lower) {
-                const sr = record.?.search_result;
-                move_data.score = sr.score + 2000 - sr.depth * 20;
-            } else move_data.score = -mutable_node.next(move_data.move).evaluate();
+            move_data.score = blk: {
+                if (record) |data| {
+                    switch (data.flag) {
+                        .lower => move_data.node_type = .cut,
+                        .upper => move_data.node_type = .all,
+                        .exact => move_data.node_type = .pv,
+                    }
+
+                    if (data.flag == .exact) break :blk data.search_result.score + 1000;
+                    break :blk data.search_result.score;
+                }
+
+                var mutable_next = mutable_node.next(move_data.move);
+                break :blk -mutable_next.evaluate();
+            };
         }
 
         // Orders moves.
@@ -307,13 +317,18 @@ pub const Engine = struct {
 
                 // Late move reduction.
                 const lmr: u32 = reduc: {
-                    if (!self.options.late_move_reduction) break :reduc 0;
-                    if (move_data.move.is_check_evasion) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
-
                     if (i < 3) break :reduc 0;
-                    if (i < 6 and node.depth < 10) break :reduc 2;
-                    break :reduc node.depth / 2;
+                    if (move_data.node_type == .pv) break :reduc 0;
+                    if (!self.options.late_move_reduction) break :reduc 0;
+
+                    if (move_data.node_type == .cut) break :reduc node.depth / 2;
+                    if (move_data.move.capture != null) break :reduc 0;
+                    if (move_data.move.is_check_evasion) break :reduc 0;
+                    if (move_data.move.promotion != null) break :reduc 0;
+
+                    if (i < 6) break :reduc 1;
+                    break :reduc @divFloor(node.depth + 3, 3);
                 };
 
                 const reduced_result = red: {
@@ -322,13 +337,16 @@ pub const Engine = struct {
                 };
 
                 const result = res: {
-                    if (reduced_result.score <= mutable_node.alpha) break :res reduced_result;
+                    const result = if (reduced_result.score <= mutable_node.alpha)
+                        reduced_result
+                    else
+                        self.PVS(child.nullWindow()).inv();
 
-                    const result = self.PVS(child.nullWindow()).inv();
                     if (result.score > mutable_node.alpha) {
                         if (mutable_node.alpha < result.score and result.score < mutable_node.beta)
                             break :res self.PVS(child).inv();
                     }
+
                     break :res result;
                 };
 
@@ -364,13 +382,13 @@ pub const Engine = struct {
     fn quiesce(self: *Engine, node: SearchNode) i64 {
         if (self.shouldAbort()) return 0;
         self.infos.nodes += 1;
+        var mutable_node = node;
 
-        const pat = node.evaluate();
+        const pat = mutable_node.look();
         if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;
 
-        var mutable_node = node;
         mutable_node.alpha = @max(node.alpha, pat);
         const move_list_len = self.data.move_list.items.len;
 
@@ -380,6 +398,13 @@ pub const Engine = struct {
             .checkmate => -evaluation.checkmate + node.ply,
             .stalemate => evaluation.stalemate,
         };
+
+        for (move_list_len..self.data.move_list.items.len) |i| {
+            var move_data = &self.data.move_list.items[i];
+            move_data.score = mutable_node.eval.capture(move_data.move);
+        }
+
+        std.sort.heap(MoveData, self.data.move_list.items[move_list_len..], {}, MoveData.lessThan);
 
         for (0..move_count) |_| {
             const move_data = self.data.move_list.pop();

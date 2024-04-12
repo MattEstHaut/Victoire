@@ -29,6 +29,8 @@ pub const Evaluator = struct {
     pieces_phase: i64 = 24,
     phase: i64 = 0,
     side: chess.Color = .white,
+    opening_bonus: i64 = 0,
+    endgame_bonus: i64 = 0,
 
     pub fn init(board: chess.Board) Evaluator {
         var evaluator = Evaluator{};
@@ -65,6 +67,8 @@ pub const Evaluator = struct {
     pub inline fn next(self: Evaluator, move: chess.Move) Evaluator {
         var result = self;
         result.side = result.side.other();
+        result.opening_bonus = -self.opening_bonus;
+        result.endgame_bonus = -self.endgame_bonus;
         if (move.null_move) return result;
         const m = mul(move.side);
 
@@ -138,26 +142,71 @@ pub const Evaluator = struct {
         return result;
     }
 
-    pub inline fn evaluate(self: Evaluator, board: *chess.Board) i64 {
-        const white_king_threat: i64 = @popCount(movegen.lookup.queen(
-            board.white.king,
-            board.white.occupied | board.black.occupied,
-        ));
+    pub inline fn evaluate(self: *Evaluator, board: *chess.Board) i64 {
+        const child = board.copyAndMake(chess.Move.nullMove());
+        const occ = board.white.occupied | board.black.occupied;
 
-        const black_king_threat: i64 = @popCount(movegen.lookup.queen(
-            board.black.king,
-            board.white.occupied | board.black.occupied,
-        ));
+        const ally_count_result = movegen.count(board.*);
+        const enemy_count_result = movegen.count(child);
 
-        const opening = self.opening_score + black_king_threat * 2 - white_king_threat * 2;
+        const ally_mobility: i64 = @intCast(ally_count_result.mobility);
+        const enemy_mobility: i64 = @intCast(enemy_count_result.mobility);
+        const mobility_diff: i64 = ally_mobility - enemy_mobility;
 
-        var score: i64 = opening * (256 - self.phase) + self.endgame_score * self.phase;
-        score = mul(self.side) * @divTrunc(score, 256);
+        const ally_space: i64 = @popCount(ally_count_result.space);
+        const enemy_space: i64 = @popCount(enemy_count_result.space);
+        const space_diff: i64 = ally_space - enemy_space;
 
-        var child = board.copyAndMake(chess.Move.nullMove());
-        score += 5 * @as(i64, @popCount(movegen.space(board)));
-        score -= 5 * @as(i64, @popCount(movegen.space(&child)));
+        const ally_threat: i64 = @popCount(movegen.lookup.queen(board.allies().king, occ));
+        const enemy_threat: i64 = @popCount(movegen.lookup.queen(board.enemies().king, occ));
+        const threat_diff = enemy_threat - ally_threat;
 
-        return score;
+        var opening = mul(self.side) * self.opening_score;
+        var endgame = mul(self.side) * self.endgame_score;
+
+        self.opening_bonus = mobility_diff * 3;
+        self.opening_bonus += space_diff * 2;
+        self.opening_bonus += threat_diff * 4;
+
+        self.endgame_bonus = mobility_diff * 2;
+        self.endgame_bonus += space_diff * 1;
+        self.endgame_bonus += threat_diff * 0;
+
+        opening += self.opening_bonus;
+        endgame += self.endgame_bonus;
+
+        const score: i64 = opening * (256 - self.phase) + endgame * self.phase;
+        return @divTrunc(score, 256);
+    }
+
+    pub inline fn look(self: Evaluator) i64 {
+        const opening = mul(self.side) * self.opening_score + self.opening_bonus;
+        const endgame = mul(self.side) * self.endgame_score + self.endgame_bonus;
+        const score: i64 = opening * (256 - self.phase) + endgame * self.phase;
+        return @divTrunc(score, 256);
+    }
+
+    pub inline fn capture(self: Evaluator, move: chess.Move) i64 {
+        if (move.capture == null) return 0;
+
+        const score: i64 = switch (move.capture.?) {
+            .pawn => 100,
+            .knight => 300,
+            .bishop => 330,
+            .rook => 500,
+            .queen => 900,
+            .king => 0,
+        };
+
+        const malus: i64 = switch (move.piece) {
+            .pawn => 100,
+            .knight => 300,
+            .bishop => 330,
+            .rook => 500,
+            .queen => 900,
+            .king => 300,
+        };
+
+        return score - @divFloor((256 - self.phase) * malus, 256);
     }
 };
