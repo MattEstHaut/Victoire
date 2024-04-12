@@ -5,7 +5,7 @@ const chess = @import("chess.zig");
 const squares = @import("squares.zig");
 const masking = @import("masking.zig");
 
-const lookup = struct {
+pub const lookup = struct {
     pub inline fn king(bb: u64) u64 {
         const no_left = bb & ~squares.col_a;
         const no_right = bb & ~squares.col_h;
