@@ -22,5 +22,7 @@ jobs:
         script_stop: true
         script: |
           cd /home/${{ secrets.USERNAME }}/Victoire
-          git pull origin master
+          git checkout master
+          git fetch origin
+          git reset --hard origin/master
           zig build -Doptimize=ReleaseFast
