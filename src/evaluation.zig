@@ -139,7 +139,19 @@ pub const Evaluator = struct {
     }
 
     pub inline fn evaluate(self: Evaluator, board: *chess.Board) i64 {
-        var score: i64 = self.opening_score * (256 - self.phase) + self.endgame_score * self.phase;
+        const white_king_threat: i64 = @popCount(movegen.lookup.queen(
+            board.white.king,
+            board.white.occupied | board.black.occupied,
+        ));
+
+        const black_king_threat: i64 = @popCount(movegen.lookup.queen(
+            board.black.king,
+            board.white.occupied | board.black.occupied,
+        ));
+
+        const opening = self.opening_score + black_king_threat * 2 - white_king_threat * 2;
+
+        var score: i64 = opening * (256 - self.phase) + self.endgame_score * self.phase;
         score = mul(self.side) * @divTrunc(score, 256);
 
         var child = board.copyAndMake(chess.Move.nullMove());

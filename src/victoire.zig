@@ -284,7 +284,13 @@ pub const Engine = struct {
 
             if (record != null and record.?.flag == .exact) {
                 const sr = record.?.search_result;
-                move_data.score = sr.score + sr.depth * 10;
+                move_data.score = sr.score + sr.depth * 10 + 1500;
+            } else if (record != null and record.?.flag == .upper) {
+                const sr = record.?.search_result;
+                move_data.score = sr.score - 500 - sr.depth * 50;
+            } else if (record != null and record.?.flag == .lower) {
+                const sr = record.?.search_result;
+                move_data.score = sr.score + 2000 - sr.depth * 20;
             } else move_data.score = -mutable_node.next(move_data.move).evaluate();
         }
 
@@ -303,18 +309,11 @@ pub const Engine = struct {
                 const lmr: u32 = reduc: {
                     if (!self.options.late_move_reduction) break :reduc 0;
                     if (move_data.move.is_check_evasion) break :reduc 0;
-                    if (move_data.move.capture != null) break :reduc 0;
                     if (node.depth < 4) break :reduc 0;
 
-                    const last_depth = node.ply + node.depth - 1;
-                    if (last_depth < 4) {
-                        if (i < 5) break :reduc 0;
-                        break :reduc 1;
-                    } else {
-                        if (i < 4) break :reduc 0;
-                        if (i < 8) break :reduc 1;
-                        break :reduc node.depth / 2;
-                    }
+                    if (i < 3) break :reduc 0;
+                    if (i < 6 and node.depth < 10) break :reduc 2;
+                    break :reduc node.depth / 2;
                 };
 
                 const reduced_result = red: {
