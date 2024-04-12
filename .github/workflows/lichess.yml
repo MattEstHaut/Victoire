@@ -1,0 +1,27 @@
+name: Restart lichess-bot service
+
+run-name: Restart lichess-bot by @${{ github.actor }}
+
+on:
+  workflow_run:
+    workflows: ["Deploy to VPS on push"]
+    types:
+      - completed
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Restart lichess-bot service
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        script_stop: true
+        script: |
+          echo ${{secrets.PASSWORD}} | sudo -S systemctl restart lichess-bot.service

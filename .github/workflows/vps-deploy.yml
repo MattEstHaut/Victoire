@@ -1,0 +1,28 @@
+name: Deploy to VPS on push
+
+run-name: Deploy to VPS by @${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Pull and build
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        script_stop: true
+        script: |
+          cd /home/${{ secrets.USERNAME }}/Victoire
+          git checkout master
+          git fetch origin
+          git reset --hard origin/master
+          zig build -Doptimize=ReleaseFast
