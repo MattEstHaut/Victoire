@@ -553,9 +553,14 @@ pub inline fn space(board: *chess.Board) u64 {
     return mask & ~positions.occupied;
 }
 
+const CountResult = struct {
+    mobility: u32 = 0,
+    space: u64 = 0,
+};
+
 /// Counts legal moves.
-pub inline fn count(board: chess.Board) u32 {
-    var nodes: u32 = 0;
+pub inline fn count(board: chess.Board) CountResult {
+    var result = CountResult{};
     var mutable_board = board;
 
     const occupied = board.white.occupied | board.black.occupied;
@@ -572,11 +577,14 @@ pub inline fn count(board: chess.Board) u32 {
         const atks = lookup.king(positions.king) & empty_or_enemy;
         var dest_iter = masking.BitIterator.init(atks);
         while (dest_iter.next()) |dest| {
-            if (!isAttacked(board, dest)) nodes += 1;
+            if (!isAttacked(board, dest)) {
+                result.mobility += 1;
+                result.space |= dest;
+            }
         }
     }
 
-    if (pin_and_check.checks > 1) return nodes;
+    if (pin_and_check.checks > 1) return result;
 
     const pin_hv = pin_and_check.pin_hor | pin_and_check.pin_ver;
     const pin_ad = pin_and_check.pin_asc | pin_and_check.pin_desc;
@@ -585,7 +593,8 @@ pub inline fn count(board: chess.Board) u32 {
         var src_iter = masking.BitIterator.init(positions.knights & ~(pin_hv | pin_ad));
         while (src_iter.next()) |src| {
             const atks = lookup.knight(src) & empty_or_enemy & pin_and_check.check;
-            nodes += @popCount(atks);
+            result.mobility += @popCount(atks);
+            result.space |= atks;
         }
     }
 
@@ -600,7 +609,8 @@ pub inline fn count(board: chess.Board) u32 {
             }
 
             const atks = lookup.bishop(src, occupied) & empty_or_enemy & pin_and_check.check & pin;
-            nodes += @popCount(atks);
+            result.mobility += @popCount(atks);
+            result.space |= atks;
         }
     }
 
@@ -615,7 +625,8 @@ pub inline fn count(board: chess.Board) u32 {
             }
 
             const atks = lookup.rook(src, occupied) & empty_or_enemy & pin_and_check.check & pin;
-            nodes += @popCount(atks);
+            result.mobility += @popCount(atks);
+            result.space |= atks;
         }
     }
 
@@ -634,7 +645,8 @@ pub inline fn count(board: chess.Board) u32 {
             }
 
             const atks = lookup.queen(src, occupied) & empty_or_enemy & pin_and_check.check & pin;
-            nodes += @popCount(atks);
+            result.mobility += @popCount(atks);
+            result.space |= atks;
         }
     }
 
@@ -643,8 +655,9 @@ pub inline fn count(board: chess.Board) u32 {
         while (src_iter.next()) |src| {
             const dest = lookup.pawnsForward(src, occupied, board.side) & pin_and_check.check;
             if (dest == 0) continue;
-            if (dest & prom_row > 0) nodes += 3;
-            nodes += 1;
+            if (dest & prom_row > 0) result.mobility += 3;
+            result.mobility += 1;
+            result.space |= dest;
         }
     }
 
@@ -653,7 +666,8 @@ pub inline fn count(board: chess.Board) u32 {
         while (src_iter.next()) |src| {
             const dest = lookup.pawnsDoubleForward(src, occupied, board.side) & pin_and_check.check;
             if (dest == 0) continue;
-            nodes += 1;
+            result.mobility += 1;
+            result.space |= dest;
         }
     }
 
@@ -669,10 +683,11 @@ pub inline fn count(board: chess.Board) u32 {
 
             const atks_mask = pin_and_check.check & pin & mutable_board.enemies().occupied & ~mutable_board.enemies().king;
             const atks = lookup.pawnCaptures(src, board.side) & atks_mask;
+            result.space |= atks;
             var dest_iter = masking.BitIterator.init(atks);
             while (dest_iter.next()) |dest| {
-                if (dest & prom_row > 0) nodes += 3;
-                nodes += 1;
+                if (dest & prom_row > 0) result.mobility += 3;
+                result.mobility += 1;
             }
         }
     }
@@ -694,22 +709,25 @@ pub inline fn count(board: chess.Board) u32 {
             move.src = src;
             var board_test = board.copyAndMake(move);
             board_test.side = move.side;
-            if (!isAttacked(board_test, positions.king)) nodes += 1;
+            if (!isAttacked(board_test, positions.king)) {
+                result.mobility += 1;
+                result.space |= move.dest;
+            }
         }
     }
 
     {
         switch (board.side) {
             .white => {
-                if (castling_right.K(board)) nodes += 1;
-                if (castling_right.Q(board)) nodes += 1;
+                if (castling_right.K(board)) result.mobility += 1;
+                if (castling_right.Q(board)) result.mobility += 1;
             },
             .black => {
-                if (castling_right.k(board)) nodes += 1;
-                if (castling_right.q(board)) nodes += 1;
+                if (castling_right.k(board)) result.mobility += 1;
+                if (castling_right.q(board)) result.mobility += 1;
             },
         }
     }
 
-    return nodes;
+    return result;
 }
