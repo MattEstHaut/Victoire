@@ -21,7 +21,7 @@ pub fn TranspositionTable(comptime T: type) type {
         data: std.ArrayList(TranspositionRecord(T)),
         size: u64,
 
-        pub fn init(size: u64, default_value: T) !TranspositionTable(T) {
+        pub fn init(size: usize, default_value: T) !TranspositionTable(T) {
             var table = TranspositionTable(T){
                 .data = std.ArrayList(TranspositionRecord(T)).init(allocator),
                 .size = size,
@@ -55,7 +55,7 @@ pub fn TranspositionTable(comptime T: type) type {
     };
 }
 
-fn m2u64(mask: u64) u64 {
+fn m2u64(mask: u64) usize {
     return @intCast(@ctz(mask));
 }
 
@@ -126,7 +126,7 @@ pub const ZobristHasher = struct {
                 },
             }
         } else {
-            var ally_index: u64 = switch (move.piece) {
+            var ally_index: usize = switch (move.piece) {
                 chess.Piece.pawn => 0,
                 chess.Piece.knight => 1,
                 chess.Piece.bishop => 2,
@@ -141,7 +141,7 @@ pub const ZobristHasher = struct {
             if (move.promotion == null) {
                 diff ^= self.numbers[m2u64(move.dest) * 12 + ally_index];
             } else {
-                var promotion_index: u64 = switch (move.promotion.?) {
+                var promotion_index: usize = switch (move.promotion.?) {
                     .knight => 1,
                     .bishop => 2,
                     .rook => 3,
@@ -153,11 +153,11 @@ pub const ZobristHasher = struct {
 
             if (move.capture != null) {
                 if (move.en_passant) {
-                    const enemy_index: u64 = if (move.side == .white) 6 else 0;
+                    const enemy_index: usize = if (move.side == .white) 6 else 0;
                     const dest = if (move.side == .white) move.dest << 8 else move.dest >> 8;
                     diff ^= self.numbers[m2u64(dest) * 12 + enemy_index];
                 } else {
-                    var enemy_index: u64 = switch (move.piece) {
+                    var enemy_index: usize = switch (move.piece) {
                         .pawn => 0,
                         .knight => 1,
                         .bishop => 2,
