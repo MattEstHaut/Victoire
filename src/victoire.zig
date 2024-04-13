@@ -322,13 +322,13 @@ pub const Engine = struct {
                     if (move_data.node_type == .pv) break :reduc 0;
                     if (!self.options.late_move_reduction) break :reduc 0;
 
-                    if (move_data.node_type == .cut) break :reduc node.depth / 2;
+                    if (move_data.node_type == .cut) break :reduc 3;
                     if (move_data.move.capture != null) break :reduc 0;
                     if (move_data.move.is_check_evasion) break :reduc 0;
                     if (move_data.move.promotion != null) break :reduc 0;
 
                     if (i < 6) break :reduc 1;
-                    break :reduc @divFloor(node.depth + 3, 3);
+                    break :reduc 2;
                 };
 
                 const reduced_result = red: {
@@ -384,8 +384,8 @@ pub const Engine = struct {
         self.infos.nodes += 1;
         var mutable_node = node;
 
+        if (node.depth == 0) return mutable_node.evaluate();
         const pat = mutable_node.look();
-        if (node.depth == 0) return pat;
 
         if (pat >= node.beta) return node.beta;
 
